@@ -1,0 +1,838 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.groupunix</groupId>
+    <artifactId>drivewire4</artifactId>
+    <version>4.3.6p</version>
+    <packaging>jar</packaging>
+
+    <name>DriveWire 4</name>
+    <description>DriveWire 4 - A modern implementation of the DriveWire protocol</description>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>windows-1252</project.build.sourceEncoding>
+        <!-- SWT version used for all supported platforms -->
+        <swt.version>3.131.0</swt.version>
+
+        <!--
+          Target SWT platform for this build.
+          - If not provided, the build selects the host OS/arch automatically.
+          - Override from CLI, e.g.:  mvn -Dswt.platform=macos-aarch64 package
+
+          Supported values (matching SWT artifacts):
+            linux-x86_64
+            linux-aarch64
+            macos-x86_64
+            macos-aarch64
+            windows-x86_64
+        -->
+        <swt.platform/>
+        <swt.platform.effective/>
+        <swt.artifactId/>
+    </properties>
+
+    <dependencies>
+        <!-- =====================================================
+             APACHE COMMONS - FROM MAVEN CENTRAL
+             ===================================================== -->
+        <dependency>
+            <groupId>commons-cli</groupId>
+            <artifactId>commons-cli</artifactId>
+            <version>1.4</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-configuration</groupId>
+            <artifactId>commons-configuration</artifactId>
+            <version>1.6</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.4</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-net</groupId>
+            <artifactId>commons-net</artifactId>
+            <version>3.6</version>
+        </dependency>
+
+        <!-- =====================================================
+             APACHE HTTP COMPONENTS - FROM MAVEN CENTRAL
+             ===================================================== -->
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.13</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpcore</artifactId>
+            <version>4.4.14</version>
+        </dependency>
+
+        <!-- =====================================================
+             JETTY - FROM MAVEN CENTRAL
+             ===================================================== -->
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+            <version>9.4.44.v20210927</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-servlet</artifactId>
+            <version>9.4.44.v20210927</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-util</artifactId>
+            <version>9.4.44.v20210927</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-http</artifactId>
+            <version>9.4.44.v20210927</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-io</artifactId>
+            <version>9.4.44.v20210927</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-continuation</artifactId>
+            <version>9.4.44.v20210927</version>
+        </dependency>
+
+        <!-- =====================================================
+             GOOGLE LIBRARIES - FROM MAVEN CENTRAL
+             ===================================================== -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>31.0.1-jre</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.8.9</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.gwt</groupId>
+            <artifactId>gwt-servlet</artifactId>
+            <version>2.9.0</version>
+        </dependency>
+
+        <!-- =====================================================
+             LOGGING - FROM MAVEN CENTRAL
+             ===================================================== -->
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.17</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.32</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>1.7.32</version>
+        </dependency>
+
+        <!-- =====================================================
+             OTHER LIBRARIES - FROM MAVEN CENTRAL
+             ===================================================== -->
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>3.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.jmdns</groupId>
+            <artifactId>jmdns</artifactId>
+            <version>3.4.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.jcraft</groupId>
+            <artifactId>jsch</artifactId>
+            <version>0.1.55</version>
+        </dependency>
+        <dependency>
+            <groupId>com.madgag</groupId>
+            <artifactId>animated-gif-lib</artifactId>
+            <version>1.4</version>
+        </dependency>
+        <!-- jSerialComm - Cross-platform serial port library with native macOS aarch64 support -->
+        <dependency>
+            <groupId>com.fazecast</groupId>
+            <artifactId>jSerialComm</artifactId>
+            <version>2.10.4</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.kurbatov</groupId>
+            <artifactId>firmata4j</artifactId>
+            <version>2.3.8</version>
+        </dependency>
+        <!-- OSGi - FROM MAVEN CENTRAL -->
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.core</artifactId>
+            <version>4.3.0</version>
+        </dependency>
+
+        <!-- Apple Java Extensions - FROM MAVEN CENTRAL -->
+        <dependency>
+            <groupId>com.apple</groupId>
+            <artifactId>AppleJavaExtensions</artifactId>
+            <version>1.4</version>
+        </dependency>
+
+        <!-- LWJGL 2.x - FROM MAVEN CENTRAL -->
+        <dependency>
+            <groupId>org.lwjgl.lwjgl</groupId>
+            <artifactId>lwjgl</artifactId>
+            <version>2.9.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.lwjgl.lwjgl</groupId>
+            <artifactId>lwjgl_util</artifactId>
+            <version>2.9.3</version>
+        </dependency>
+
+        <!-- JInput - FROM MAVEN CENTRAL -->
+        <dependency>
+            <groupId>net.java.jinput</groupId>
+            <artifactId>jinput</artifactId>
+            <version>2.0.9</version>
+        </dependency>
+
+        <!-- ASM - FROM MAVEN CENTRAL -->
+        <dependency>
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm-all</artifactId>
+            <version>5.0.4</version>
+        </dependency>
+
+        <!-- MigLayout - FROM MAVEN CENTRAL -->
+        <!-- Note: Only miglayout-swing is used in the code, not miglayout-swt -->
+        <dependency>
+            <groupId>com.miglayout</groupId>
+            <artifactId>miglayout-core</artifactId>
+            <version>5.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.miglayout</groupId>
+            <artifactId>miglayout-swing</artifactId>
+            <version>5.3</version>
+        </dependency>
+
+        <!-- LZMA/XZ - FROM MAVEN CENTRAL -->
+        <dependency>
+            <groupId>org.tukaani</groupId>
+            <artifactId>xz</artifactId>
+            <version>1.9</version>
+        </dependency>
+
+        <!-- =====================================================
+             ECLIPSE PLATFORM - FROM MAVEN CENTRAL
+             ===================================================== -->
+        <dependency>
+            <groupId>org.eclipse.platform</groupId>
+            <artifactId>org.eclipse.jface</artifactId>
+            <version>3.30.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.eclipse.platform</groupId>
+                    <artifactId>org.eclipse.swt</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt.cocoa.macosx</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt.gtk.linux</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt.win32.win32</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.platform</groupId>
+            <artifactId>org.eclipse.core.commands</artifactId>
+            <version>3.11.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.eclipse.platform</groupId>
+                    <artifactId>org.eclipse.swt</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt.cocoa.macosx</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt.gtk.linux</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt.win32.win32</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.platform</groupId>
+            <artifactId>org.eclipse.equinox.common</artifactId>
+            <version>3.18.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.eclipse.platform</groupId>
+                    <artifactId>org.eclipse.swt</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt.cocoa.macosx</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt.gtk.linux</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt.win32.win32</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!--
+          SWT (native) - exactly one platform-specific SWT artifact is selected
+          by the profiles at the bottom of this POM.
+        -->
+        <dependency>
+            <groupId>org.eclipse.platform</groupId>
+            <artifactId>${swt.artifactId}</artifactId>
+            <version>${swt.version}</version>
+        </dependency>
+
+        <!-- =====================================================
+             CAJO - FROM NUITON THIRDPARTY REPOSITORY
+             ===================================================== -->
+        <dependency>
+            <groupId>gnu.cajo</groupId>
+            <artifactId>cajo</artifactId>
+            <version>1.168</version>
+        </dependency>
+
+        <!-- =====================================================
+             SWING2SWT - Local JAR included in project
+             ===================================================== -->
+        <dependency>
+            <groupId>org.eclipse.wb.rcp</groupId>
+            <artifactId>swing2swt</artifactId>
+            <version>1.6.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/swing2swt-1.6.0.jar</systemPath>
+        </dependency>
+
+        <!-- =====================================================
+             MISSING DEPENDENCIES - Added to fix compilation
+             ===================================================== -->
+        
+        <!-- Ostermiller Utilities (CircularByteBuffer) -->
+        <dependency>
+            <groupId>org.ostermiller</groupId>
+            <artifactId>utils</artifactId>
+            <version>1.07.00</version>
+        </dependency>
+
+        <!-- Apache Commons VFS 1.0 (old API - org.apache.commons.vfs) -->
+        <dependency>
+            <groupId>commons-vfs</groupId>
+            <artifactId>commons-vfs</artifactId>
+            <version>1.0</version>
+        </dependency>
+
+        <!-- Old Commons HttpClient 3.x (required by commons-vfs 1.0) -->
+        <dependency>
+            <groupId>commons-httpclient</groupId>
+            <artifactId>commons-httpclient</artifactId>
+            <version>3.1</version>
+        </dependency>
+
+        <!-- Jericho HTML Parser -->
+        <dependency>
+            <groupId>net.htmlparser.jericho</groupId>
+            <artifactId>jericho-html</artifactId>
+            <version>3.4</version>
+        </dependency>
+
+        <!-- Apache Commons Collections 3.x (for OrderedMap) -->
+        <dependency>
+            <groupId>commons-collections</groupId>
+            <artifactId>commons-collections</artifactId>
+            <version>3.2.2</version>
+        </dependency>
+
+        <!-- Eclipse Core Runtime (for Platform class) -->
+        <dependency>
+            <groupId>org.eclipse.platform</groupId>
+            <artifactId>org.eclipse.core.runtime</artifactId>
+            <version>3.26.100</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.eclipse.platform</groupId>
+                    <artifactId>org.eclipse.swt</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt.cocoa.macosx</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt.gtk.linux</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.swt.win32.win32</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <sourceDirectory>src/main/java</sourceDirectory>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+        </resources>
+
+        <plugins>
+            <!-- Compiler plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                    <encoding>windows-1252</encoding>
+                </configuration>
+            </plugin>
+
+            <!--
+              Generate a tiny class that records which SWT platform this build targeted.
+              This is informational (packaging/diagnostics). Runtime behavior should still
+              rely on System.getProperty("os.name") / "os.arch".
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>add-generated-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources/dw</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>generate-buildtarget</id>
+                        <phase>generate-sources</phase>
+                        <goals><goal>run</goal></goals>
+                        <configuration>
+                            <target>
+                                <mkdir dir="${project.build.directory}/generated-sources/dw/com/groupunix/drivewire/util"/>
+                                <echo file="${project.build.directory}/generated-sources/dw/com/groupunix/drivewire/util/BuildTarget.java" encoding="UTF-8"><![CDATA[
+package com.groupunix.drivewire.util;
+
+/**
+ * Generated at build time.
+ *
+ * The value reflects the SWT platform selected by Maven (see -Dswt.platform).
+ * This is intended for logging/diagnostics and packaging decisions.
+ */
+public final class BuildTarget {
+    private BuildTarget() {}
+
+    public static final String SWT_PLATFORM = "${swt.platform.effective}";
+    public static final String SWT_ARTIFACT_ID = "${swt.artifactId}";
+    public static final String SWT_VERSION = "${swt.version}";
+}
+]]></echo>
+                            </target>
+                        </configuration>
+                    </execution>
+
+                    <execution>
+                        <id>cleanup-old-swt</id>
+                        <phase>package</phase>
+                        <goals><goal>run</goal></goals>
+                        <configuration>
+                            <target>
+                                <!-- Delete old Carbon-based SWT fragments (pre-Cocoa) -->
+                                <delete verbose="true" failonerror="false">
+                                    <fileset dir="${project.build.directory}/lib" includes="macosx-*.jar"/>
+                                    <fileset dir="${project.build.directory}/lib" includes="*carbon*.jar"/>
+                                    <fileset dir="${project.build.directory}/lib" includes="x86-*.jar"/>
+                                    <fileset dir="${project.build.directory}/lib" includes="x86_64-*.jar"/>
+                                    <fileset dir="${project.build.directory}/lib" includes="aarch64-*.jar"/>
+                                    <fileset dir="${project.build.directory}/lib" includes="win32-*.jar"/>
+                                    <fileset dir="${project.build.directory}/lib" includes="linux-*.jar"/>
+                                </delete>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Exec plugin for running -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>com.groupunix.drivewireui.MainWin</mainClass>
+                    <includeProjectDependencies>true</includeProjectDependencies>
+                    <includePluginDependencies>false</includePluginDependencies>
+                    <additionalClasspathElements>
+                        <additionalClasspathElement>${project.basedir}/lib/swing2swt-1.6.0.jar</additionalClasspathElement>
+                    </additionalClasspathElements>
+                    <systemProperties>
+                        <systemProperty>
+                            <key>java.library.path</key>
+                            <value>${project.basedir}/lib</value>
+                        </systemProperty>
+                    </systemProperties>
+                </configuration>
+            </plugin>
+
+            <!-- JAR plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+          <finalName>drivewire4</finalName>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.groupunix.drivewireui.MainWin</mainClass>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>lib/</classpathPrefix>
+                        </manifest>
+                        <manifestEntries>
+                            <Class-Path>lib/swing2swt-1.6.0.jar</Class-Path>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
+
+            <!-- Copy dependencies to lib/ -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals><goal>copy-dependencies</goal></goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <!-- Exclude old/conflicting SWT fragments by groupId -->
+                            <excludeGroupIds>org.eclipse.swt.cocoa.macosx,org.eclipse.swt.gtk.linux,org.eclipse.swt.win32.win32,org.eclipse.swt</excludeGroupIds>
+                            <!-- Also exclude by artifactId pattern - includes old naming conventions -->
+                            <excludeArtifactIds>x86_64,aarch64,macosx,win32,linux,org.eclipse.swt</excludeArtifactIds>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Copy swing2swt-1.6.0.jar to target/lib -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-swing2swt</id>
+                        <phase>package</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/lib</directory>
+                                    <includes>
+                                        <include>swing2swt-1.6.0.jar</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--
+              Create a *platform-specific* distribution ZIP.
+
+              Build examples:
+                mvn -DskipTests package                         (host platform)
+                mvn -DskipTests -Dswt.platform=linux-aarch64 package
+
+              Output:
+                target/drivewire4-<version>-<swt.platform.effective>.zip
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.6.0</version>
+                <configuration>
+                    <finalName>${project.artifactId}-${project.version}-${swt.platform.effective}</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
+                    <formats>
+                        <format>zip</format>
+                    </formats>
+                    <!-- Assembly plugin requires an explicit descriptor. -->
+                    <descriptors>
+                        <descriptor>src/assembly/dist.xml</descriptor>
+                    </descriptors>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-dist-zip</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+
+    <!-- Additional repositories -->
+    <repositories>
+        <repository>
+            <id>nuiton-thirdparty</id>
+            <name>Nuiton Thirdparty Repository</name>
+            <url>https://nexus.nuiton.org/nexus/content/repositories/thirdparty/</url>
+        </repository>
+    </repositories>
+
+    <!--
+      SWT is platform-specific (native code). This build supports *all* SWT platforms by
+      selecting exactly ONE SWT artifact per build.
+
+      - Default (no -Dswt.platform): selects the host OS/arch.
+      - Cross-build: pass -Dswt.platform=<value> to select another platform's SWT jar.
+
+      Example (build on Linux, target macOS Apple Silicon):
+        mvn -Dswt.platform=macos-aarch64 clean package
+    -->
+    <profiles>
+        <!-- ============================ -->
+        <!-- Explicit selection via -Dswt.platform -->
+        <!-- ============================ -->
+        <profile>
+            <id>platform-linux-x86_64</id>
+            <activation>
+                <property>
+                    <name>swt.platform</name>
+                    <value>linux-x86_64</value>
+                </property>
+            </activation>
+            <properties>
+                <swt.platform.effective>linux-x86_64</swt.platform.effective>
+                <swt.artifactId>org.eclipse.swt.gtk.linux.x86_64</swt.artifactId>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>platform-linux-aarch64</id>
+            <activation>
+                <property>
+                    <name>swt.platform</name>
+                    <value>linux-aarch64</value>
+                </property>
+            </activation>
+            <properties>
+                <swt.platform.effective>linux-aarch64</swt.platform.effective>
+                <swt.artifactId>org.eclipse.swt.gtk.linux.aarch64</swt.artifactId>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>platform-macos-x86_64</id>
+            <activation>
+                <property>
+                    <name>swt.platform</name>
+                    <value>macos-x86_64</value>
+                </property>
+            </activation>
+            <properties>
+                <swt.platform.effective>macos-x86_64</swt.platform.effective>
+                <swt.artifactId>org.eclipse.swt.cocoa.macosx.x86_64</swt.artifactId>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>platform-macos-aarch64</id>
+            <activation>
+                <property>
+                    <name>swt.platform</name>
+                    <value>macos-aarch64</value>
+                </property>
+            </activation>
+            <properties>
+                <swt.platform.effective>macos-aarch64</swt.platform.effective>
+                <swt.artifactId>org.eclipse.swt.cocoa.macosx.aarch64</swt.artifactId>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>platform-windows-x86_64</id>
+            <activation>
+                <property>
+                    <name>swt.platform</name>
+                    <value>windows-x86_64</value>
+                </property>
+            </activation>
+            <properties>
+                <swt.platform.effective>windows-x86_64</swt.platform.effective>
+                <swt.artifactId>org.eclipse.swt.win32.win32.x86_64</swt.artifactId>
+            </properties>
+        </profile>
+
+        <!-- ============================ -->
+        <!-- Default selection (only when -Dswt.platform is NOT set) -->
+        <!-- ============================ -->
+        <profile>
+            <id>auto-linux-x86_64</id>
+            <activation>
+                <property>
+                    <name>!swt.platform</name>
+                </property>
+                <os>
+                    <name>Linux</name>
+                    <arch>amd64</arch>
+                </os>
+            </activation>
+            <properties>
+                <swt.platform.effective>linux-x86_64</swt.platform.effective>
+                <swt.artifactId>org.eclipse.swt.gtk.linux.x86_64</swt.artifactId>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>auto-linux-aarch64</id>
+            <activation>
+                <property>
+                    <name>!swt.platform</name>
+                </property>
+                <os>
+                    <name>Linux</name>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <swt.platform.effective>linux-aarch64</swt.platform.effective>
+                <swt.artifactId>org.eclipse.swt.gtk.linux.aarch64</swt.artifactId>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>auto-macos-x86_64</id>
+            <activation>
+                <property>
+                    <name>!swt.platform</name>
+                </property>
+                <os>
+                    <family>mac</family>
+                    <arch>x86_64</arch>
+                </os>
+            </activation>
+            <properties>
+                <swt.platform.effective>macos-x86_64</swt.platform.effective>
+                <swt.artifactId>org.eclipse.swt.cocoa.macosx.x86_64</swt.artifactId>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>auto-macos-aarch64</id>
+            <activation>
+                <property>
+                    <name>!swt.platform</name>
+                </property>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <swt.platform.effective>macos-aarch64</swt.platform.effective>
+                <swt.artifactId>org.eclipse.swt.cocoa.macosx.aarch64</swt.artifactId>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>auto-windows-x86_64</id>
+            <activation>
+                <property>
+                    <name>!swt.platform</name>
+                </property>
+                <os>
+                    <family>windows</family>
+                    <arch>amd64</arch>
+                </os>
+            </activation>
+            <properties>
+                <swt.platform.effective>windows-x86_64</swt.platform.effective>
+                <swt.artifactId>org.eclipse.swt.win32.win32.x86_64</swt.artifactId>
+            </properties>
+        </profile>
+    </profiles>
+
+</project>

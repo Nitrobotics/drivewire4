@@ -10,7 +10,191 @@ Latest version is 4.3.6p
 - [DriveWire4 4.3.6p for MacOS aarch64(apple silicone) with Java included](https://github.com/qbancoffee/drivewire4/releases/tag/4.3.6p_macOS_aarch64)
 - [DriveWire4 4.3.6p for MacOS x86_64 with Java included](https://github.com/qbancoffee/drivewire4/releases/tag/4.3.6p_macOS_x86_64)
 
+# DriveWire 4 Version 4.3.6p - Release Notes
 
+## Overview
+
+This release focuses on **cross-platform compatibility improvements**, particularly for **macOS Apple Silicon** and **Windows** systems. Major changes include a complete serial library migration and enhanced file path handling.
+
+
+
+## Serial Library Migration: nrjavaserial to jSerialComm
+
+### Background
+
+The previous serial communication library, **nrjavaserial 5.2.1**, does not support **macOS Apple Silicon (aarch64)**. This is a [known issue](https://github.com/NeuronRobotics/nrjavaserial/issues/219) where the native library loader looks for the wrong library name on ARM Macs. Support for Apple Silicon was targeted for version 5.3.0, which was never released.
+
+### Solution
+
+DriveWire 4 now uses **[jSerialComm 2.10.4](https://fazecast.github.io/jSerialComm/)**, a modern serial communication library with native support for:
+
+- **macOS x86_64** (Intel)
+- **macOS aarch64** (Apple Silicon M1/M2/M3/M4)
+- **Windows x86/x64**
+- **Linux x86/x64/ARM**
+
+### Migration Details
+
+The following files were updated to use the jSerialComm API:
+
+| File | Changes |
+|------|---------|
+| `DWSerialDevice.java` | Port opening, configuration, and data transfer |
+| `DWSerialReader.java` | Serial data reading thread |
+| `DriveWireServer.java` | Serial port testing and enumeration |
+| `DWCmdServerShowSerial.java` | Serial port status display |
+| `DWUtils.java` | Port enumeration utilities |
+| `DWAPISerial.java` | Serial API endpoint |
+| `DWAPISerialPortDef.java` | Port definition handling |
+| `DWProtocolHandler.java` | Protocol communication layer |
+| `VModemProtocolHandler.java` | Virtual modem support |
+| `MCXProtocolHandler.java` | MCX protocol support |
+| `DWCmdServerTurbo.java` | Turbo mode serial handling |
+
+
+
+
+---
+
+## Windows Path Compatibility Fix
+
+### Problem
+
+When loading disk images or ZIP files through the **right-click context menu** on the drive table, Windows file paths (e.g., `C:\Users\name\disk.dsk`) were not being handled correctly. The Apache Commons VFS library expects properly formatted `file://` URIs.
+
+### Solution
+
+`DWImageMounter.java` was updated with comprehensive cross-platform path handling:
+
+#### 1. Cross-Platform Filename Extraction
+
+The `getFilename()` method now handles both Unix (`/`) and Windows (`\`) path separators:
+
+```java
+int lastSlash = location.lastIndexOf('/');
+int lastBackslash = location.lastIndexOf('\\');
+int lastSeparator = Math.max(lastSlash, lastBackslash);
+```
+
+#### 2. Path-to-URI Normalization
+
+A new `normalizeToFileUri()` method converts file paths to proper `file://` URIs:
+
+| Input | Output |
+|-------|--------|
+| `C:\path\to\file.dsk` | `file:///C:/path/to/file.dsk` |
+| `/path/to/file.dsk` | `file:///path/to/file.dsk` |
+| `file:///already/uri` | `file:///already/uri` (unchanged) |
+
+#### 3. Consistent URI Handling
+
+All file loading paths now use normalized URIs:
+- ZIP file contents via `findAllFileUris()`
+- Non-ZIP disk images via `mountDisks()`
+- Browser-initiated loads via `DWBrowser.java`
+
+---
+
+## Windows Installer Improvements
+
+### Features
+
+- **Silent Launch**: Application starts without a visible command prompt window using `javaw.exe`
+- **Bundled JRE Priority**: Automatically uses the included JRE if present, falls back to system Java
+- **Start Menu Integration**: Creates shortcuts for both launching and uninstalling
+- **Self-Contained**: Does not modify system-wide Java settings
+
+### Installation
+
+1. Extract the distribution archive
+2. Run `install_windows.bat`
+3. Launch from **Start Menu > DriveWire4**
+
+### Uninstallation
+
+- **Start Menu > DriveWire4 > Uninstall**, or
+- Run `uninstall.bat` from the installation directory
+
+---
+
+## Platform Compatibility
+
+### Tested Platforms
+
+| Platform | Architecture | Status |
+|----------|--------------|--------|
+| Windows 10 | x64 | Verified |
+| Windows 11 | x64 | Verified |
+| Ubuntu Linux | x86_64 | Verified |
+| Raspberry Pi OS | aarch64 | Verified |
+| macOS | x86_64 (Intel) | Not Verified |
+| macOS | aarch64 (Apple Silicon) | Verified |
+
+### macOS Apple Silicon Notes
+
+This is the **first version of DriveWire 4 with native Apple Silicon support**. Previous versions required Rosetta 2 emulation for serial port functionality, which often resulted in enumeration failures or crashes.
+
+---
+
+## Build System
+
+### Maven Configuration
+
+The project uses Maven with platform-specific profiles for SWT libraries:
+
+```bash
+# Build for current platform (auto-detected)
+mvn clean package
+
+# Build for specific platform
+mvn clean package -P linux-x86_64
+mvn clean package -P linux-aarch64
+mvn clean package -P macosx-x86_64
+mvn clean package -P macosx-aarch64
+mvn clean package -P windows-x86_64
+```
+Additionaly you can run the buildall script to create versions for all platforms. the binaries will be created in ./dist-buildall in their respective directories.
+```bash
+chmod +x buildall.sh
+./buildall.sh
+```
+
+### Dependencies
+
+All dependencies are resolved from Maven Central and Nuiton repositories. No GitHub-hosted JARs are required.
+
+| Dependency | Version | Purpose |
+|------------|---------|---------|
+| jSerialComm | 2.10.4 | Serial port communication |
+| SWT | 4.37 | GUI framework |
+| Apache Commons VFS | 1.0 | Virtual file system |
+| Log4j | 1.2.17 | Logging |
+
+---
+
+## Migration from Previous Versions
+
+### For Users
+
+Simply download and install the new version. Configuration files are compatible with previous 4.3.x releases.
+
+### For Developers
+
+If you have custom code that interfaces with DriveWire's serial port handling:
+
+1. Replace `gnu.io.*` imports with `com.fazecast.jSerialComm.*`
+2. Update method calls per the API mapping table above
+3. Replace `PortInUseException` with `DWPortInUseException`
+4. Replace `UnsupportedCommOperationException` with `DWUnsupportedCommOperationException`
+
+---
+
+## Known Issues
+
+- **Linux WebKit**: Ensure `libswt-webkit-gtk-4-jni` is installed before first run
+- **Windows Antivirus**: Some antivirus software may flag `commons-vfs-1.0.jar`; add an exclusion if needed
+
+---
 
 # Quality of Life Improvements
 

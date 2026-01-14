@@ -147,11 +147,12 @@ The project uses Maven with platform-specific profiles for SWT libraries:
 mvn clean package
 
 # Build for specific platform
-mvn clean package -P linux-x86_64
-mvn clean package -P linux-aarch64
-mvn clean package -P macosx-x86_64
-mvn clean package -P macosx-aarch64
-mvn clean package -P windows-x86_64
+
+mvn -DskipTests -Dswt.platform=windows-x86_64 clean package
+mvn -DskipTests -Dswt.platform=linux-x86_64 clean package
+mvn -DskipTests -Dswt.platform=linux-aarch64 clean package
+mvn -DskipTests -Dswt.platform=macos-x86_64 clean package
+mvn -DskipTests -Dswt.platform=macos-aarch64 clean package
 ```
 Additionaly you can run the buildall script to create versions for all platforms. the binaries will be created in ./dist-buildall in their respective directories.
 ```bash

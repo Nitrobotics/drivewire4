@@ -165,6 +165,8 @@ public class InstanceMan extends Shell
 					boolean connected = false;
 					boolean ready = false;
 					String devname = "Unknown";
+					String iname = "";
+					String cfgdev = "";   // wb 2026-09-08
 					String devclient = "Unknown";
 					ExpandItem xpndtmInstance;
 					InstanceManComposite composite;
@@ -212,7 +214,11 @@ public class InstanceMan extends Shell
 								
 								if (m.group(1).equals("name"))
 								{
-									xpndtmInstance.setText("Instance " + parts[0] + ": " + m.group(2));
+									iname = m.group(2);
+								}
+								else if (m.group(1).equals("configdevice"))
+								{
+									cfgdev = m.group(2);
 								}
 								else if (m.group(1).equals("connected"))
 								{
@@ -297,6 +303,11 @@ public class InstanceMan extends Shell
 							
 						}
 						
+						// wb 2026-09-08: root title = instance name only (the device details live in the panel below);
+						// set only when it changes, so a rename shows up on the next refresh
+						String title = "Instance " + parts[0] + ": " + iname;
+						if (!title.equals(xpndtmInstance.getText()))
+							xpndtmInstance.setText(title);
 						String stat2 = "";
 						
 						switch (devtype)

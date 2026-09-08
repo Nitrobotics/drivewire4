@@ -748,7 +748,16 @@ public class UIUtils {
 			@Override
 			public void run()
 			{
-				String fn = MainWin.getFile(true, false, "", "Save log to...", "Save");
+				// wb 2026-09-07: the file dialog is an SWT widget and must be opened on the UI thread; calling it from
+				// this worker threw SWTException "Invalid thread access", so "Save log" never worked.
+				final String[] pick = new String[1];
+				MainWin.getDisplay().syncExec(new Runnable() {
+					public void run()
+					{
+						pick[0] = MainWin.getFile(true, false, "", "Save log to...", "Save");
+					}
+				});
+				String fn = pick[0];
 				
 				if (fn != null)
 				{

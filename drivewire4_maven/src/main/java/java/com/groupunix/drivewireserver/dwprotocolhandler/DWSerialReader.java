@@ -4,6 +4,7 @@ import com.fazecast.jSerialComm.SerialPort;
 import com.fazecast.jSerialComm.SerialPortDataListener;
 import com.fazecast.jSerialComm.SerialPortEvent;
 import com.fazecast.jSerialComm.SerialPortIOException;
+import com.fazecast.jSerialComm.SerialPortTimeoutException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,18 +16,21 @@ import org.apache.log4j.Logger;
  * Serial port listener: moves received bytes into the queue DWSerialDevice.comRead1() polls.
  *
  * wb 2026-09-07 changes:
+ *  - the original loop read one byte at a time until jSerialComm's InputStream threw
+ *    SerialPortTimeoutException ("The read operation timed out before any data was returned"):
+ *    that exception was the normal end of every batch and went to stderr with printStackTrace(),
+ *    once per byte the DriveWire driver's virtual-serial poll sends.  The loop now reads only what
+ *    available() reports, so the timeout never fires; if it ever does it is silently the end of data.
  *  - queue.add() threw IllegalStateException("Queue full") inside the jSerialComm callback whenever
- *    the 512-byte queue overflowed (line noise while the machine powers up, a burst while the handler
- *    is busy); an exception thrown out of the callback silently stopped the reader.  offer() drops the
- *    byte and counts it instead, with a warning.
- *  - read failures went to stderr with printStackTrace() (the "exception error" seen when the remote
- *    machine is power-cycled); they are logged through log4j now, rate-limited.
+ *    the 512-byte queue overflowed; offer() drops the byte and counts it instead, with a warning.
+ *  - real read failures are logged through log4j, rate-limited, instead of stderr.
  *  - the listener also subscribes to LISTENING_EVENT_PORT_DISCONNECTED and flags the loss, so that
  *    DWSerialDevice.comRead1() can leave its wait loop and the handler can reopen the port.
  */
 public class DWSerialReader implements SerialPortDataListener
 {
 	private static final Logger logger = Logger.getLogger("DWServer.DWSerialReader");
+	private static final int CHUNK = 4096;
 
 	private ArrayBlockingQueue<Byte> queue;
 	private InputStream in;
@@ -34,6 +38,7 @@ public class DWSerialReader implements SerialPortDataListener
 	private volatile boolean disconnected = false;
 	private long dropped = 0;
 	private long lastErrLog = 0;
+	private byte[] buf = new byte[CHUNK];
 
 	public DWSerialReader(InputStream in, ArrayBlockingQueue<Byte> q)
 	{
@@ -60,20 +65,32 @@ public class DWSerialReader implements SerialPortDataListener
 		if (event.getEventType() != SerialPort.LISTENING_EVENT_DATA_AVAILABLE)
 			return;
 
-		int data;
-
 		try
 		{
-			while (!wanttodie && ((data = in.read()) > -1))
-			{
-				if (!queue.offer((byte) data))
-				{
-					dropped++;
+			int avail;
 
-					if ((dropped == 1) || ((dropped % 4096) == 0))
-						logger.warn("serial input queue full, " + dropped + " byte(s) dropped so far (line noise, or the server is not keeping up)");
+			while (!wanttodie && ((avail = in.available()) > 0))
+			{
+				int got = in.read(buf, 0, Math.min(avail, CHUNK));
+
+				if (got <= 0)
+					break;
+
+				for (int i = 0; i < got; i++)
+				{
+					if (!queue.offer(buf[i]))
+					{
+						dropped++;
+
+						if ((dropped == 1) || ((dropped % 4096) == 0))
+							logger.warn("serial input queue full, " + dropped + " byte(s) dropped so far (line noise, or the server is not keeping up)");
+					}
 				}
 			}
+		}
+		catch (SerialPortTimeoutException e)
+		{
+			// nothing more to read right now: the normal end of data in jSerialComm's non-blocking mode
 		}
 		catch (SerialPortIOException e)
 		{

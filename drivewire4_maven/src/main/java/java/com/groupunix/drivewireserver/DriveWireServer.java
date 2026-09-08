@@ -47,8 +47,8 @@ import com.groupunix.drivewireserver.dwprotocolhandler.vmodem.VModemProtocolHand
 public class DriveWireServer 
 {
 
-	public static final String DWServerVersion = "4.3.6p";
-	public static final String DWServerVersionDate = "01/10/26";
+	public static final String DWServerVersion = "4.3.6.1";
+	public static final String DWServerVersionDate = "09/07/26";
 	
 	private static Logger logger = Logger.getLogger(com.groupunix.drivewireserver.DriveWireServer.class);
 	private static ConsoleAppender consoleAppender;
@@ -1263,7 +1263,7 @@ public class DriveWireServer
 		
 		if (DriveWireServer.logger != null)
 		{
-			logger.error(msg);
+			logger.error(msg, thrw);   // wb 2026-09-07: full trace with the error, not only at INFO
 			logger.info(getStackTrace(thrw));
 		}
 		

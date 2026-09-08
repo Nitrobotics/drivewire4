@@ -434,6 +434,11 @@ public class DWProtocolHandler implements Runnable, DWVSerialProtocol
 					{
 						logger.warn("Invalid port # from CoCo in " + DWUtils.prettyOP(lastOpcode) + ": " + e.getMessage());
 					}
+					catch (RuntimeException e)
+					{
+						// wb 2026-09-07: garbage data or a lost port must not kill the handler thread; log and carry on
+						logger.error("Unexpected " + e.getClass().getSimpleName() + " in " + DWUtils.prettyOP(lastOpcode) + ": " + e.getMessage(), e);
+					}
 		
 					this.inOp = false;
 					
@@ -515,7 +520,7 @@ public class DWProtocolHandler implements Runnable, DWVSerialProtocol
 			
 			System.out.println("\n\n");
 			
-			logger.error(e.getMessage());
+			logger.error("handler #" + handlerno + " died: " + e, e);   // wb 2026-09-07: full trace into the log
 		}
 		finally
 		{

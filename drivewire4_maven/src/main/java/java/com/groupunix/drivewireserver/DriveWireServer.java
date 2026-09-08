@@ -92,10 +92,9 @@ public class DriveWireServer
 	@SuppressWarnings("unused")
 	private static boolean noServer = false;
 	
-	@SuppressWarnings("unused")
 	private static boolean restart_logging = false;
-	@SuppressWarnings("unused")
 	private static boolean restart_ui = false;
+	private static long restart_ui_time = 0;
 	
 	public static void main(String[] args) throws ConfigurationException
 	{
@@ -122,6 +121,21 @@ public class DriveWireServer
     			checkHandlerHealth();
     			
     			submitServerStatus();
+
+    			// wb 2026-09-07: DWServerConfigListener set these flags but nothing consumed them, so a
+    			// LogLevel/LogToConsole/LogToFile or UIPort change only took effect after a full restart.
+    			if (restart_logging)
+    			{
+    				restart_logging = false;
+    				applyLoggingSettings();
+    				logger.info("logging settings re-applied");
+    			}
+    			if (restart_ui && ((System.currentTimeMillis() - restart_ui_time) > 3000))
+    			{
+    				restart_ui = false;
+    				logger.info("UI settings changed, restarting the UI listener");
+    				applyUISettings();
+    			}
     			
     		} 
     		catch (InterruptedException e)
@@ -300,6 +314,10 @@ public class DriveWireServer
         {
     		// try to load/parse config
     		serverconfig = new XMLConfiguration(configfile);
+
+    		// wb 2026-09-07: drop the whitespace-only text nodes so every later save is freshly indented
+    		// instead of growing by thousands of blank lines per session (see DWConfigTidy)
+    		DWConfigTidy.tidy(serverconfig, "server config");
     		
     		// only backup if it loads
     		if (useBackup)
@@ -1305,6 +1323,7 @@ public class DriveWireServer
 	public static void setUIRestart()
 	{
 		DriveWireServer.restart_ui = true;
+		DriveWireServer.restart_ui_time = System.currentTimeMillis();
 	}
 	
 	public static Logger getLogger()

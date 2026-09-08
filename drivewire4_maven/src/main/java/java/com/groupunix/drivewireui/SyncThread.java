@@ -103,10 +103,12 @@ public class SyncThread implements Runnable
 				    
 				    // optional depending on instance capabilities
 				    // load all disk info
+				    boolean disksLoaded = false;   // wb 2026-09-07
 				    try
 				    {
 				    	MainWin.setDisks(UIUtils.getServerDisks());
 				    	MainWin.applyDisks();
+				    	disksLoaded = true;
 				    }
 				    catch (DWUIOperationFailedException e)
 					{
@@ -142,6 +144,11 @@ public class SyncThread implements Runnable
 				    this.out.write(( MainWin.getInstance()+"").getBytes());
 				    this.out.write((byte) 0);
 				    this.out.write("ui sync\n".getBytes());
+
+				    // wb 2026-09-07: if the drive list could not be read (instance still starting) keep trying,
+				    // otherwise the table is built from stray events and shows 4 mislabelled rows instead of 256
+				    if (!disksLoaded)
+				    	scheduleDiskResync();
 				} 
 				catch (Exception e) 
 				{
@@ -235,6 +242,38 @@ public class SyncThread implements Runnable
 	}
 
 	
+	// wb 2026-09-07: see run(): re-read the drive list until the instance answers
+	private void scheduleDiskResync()
+	{
+		Thread t = new Thread(new Runnable() {
+			public void run()
+			{
+				for (int i = 0; (i < 30) && !wanttodie; i++)
+				{
+					try { Thread.sleep(4000); } catch (InterruptedException e) { return; }
+					try
+					{
+						MainWin.setDisks(UIUtils.getServerDisks());
+						MainWin.applyDisks();
+						MainWin.debug("Sync: drive list loaded on retry " + (i + 1));
+						return;
+					}
+					catch (DWUIOperationFailedException e)
+					{
+						MainWin.debug("Sync: drive list not ready yet (" + e.getMessage() + ")");
+					}
+					catch (IOException e)
+					{
+						return;
+					}
+				}
+			}
+		});
+		t.setDaemon(true);
+		t.setName("dwuiDiskResync");
+		t.start();
+	}
+
 	private void processLine(String line) 
 	{
 		// drives

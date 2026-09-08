@@ -57,7 +57,10 @@ public class UICmdInstanceDiskShow extends DWCommand {
 		{
 			if (dwProto.getDiskDrives() == null)
 			{
-				return(new DWCommandResponse(false,DWDefs.RC_NO_SUCH_DISKSET, "Disk drives are null, is server restarting?"));
+				// wb 2026-09-07: the instance has not finished starting (AutoStart off, or the UI connected before the
+				// handler thread ran).  Answer with an empty list instead of an error so the UI still builds its full
+				// 256-row drive table; the drives arrive as *insert events as they load.
+				return(new DWCommandResponse(""));
 			}
 			
 			for (int i =0;i<dwProto.getDiskDrives().getMaxDrives();i++)

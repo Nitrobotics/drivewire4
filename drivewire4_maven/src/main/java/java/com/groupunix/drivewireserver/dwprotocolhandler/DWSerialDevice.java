@@ -36,6 +36,7 @@ public class DWSerialDevice implements DWProtocolDevice
 	private ArrayBlockingQueue<Byte> queue;
 
 	private DWSerialReader evtlistener;
+	private boolean portLostLogged = false;
 
 	private boolean ProtocolFlipOutputBits;
 
@@ -272,6 +273,11 @@ public class DWSerialDevice implements DWProtocolDevice
 	{	
 		try 
 		{
+			if ((this.serialPort == null) || !this.serialPort.isOpen())
+			{
+				logger.debug("write of " + len + " byte(s) dropped: serial device not open");
+				return;
+			}
 			if (this.ProtocolFlipOutputBits || this.DATurboMode) 
 				data = DWUtils.reverseByteArray(data);
 				
@@ -332,6 +338,11 @@ public class DWSerialDevice implements DWProtocolDevice
 		
 		try 
 		{
+			if ((this.serialPort == null) || !this.serialPort.isOpen())
+			{
+				logger.debug("write dropped: serial device not open");
+				return;
+			}
 			if (this.ProtocolFlipOutputBits || this.DATurboMode) 
 				data = DWUtils.reverseByte(data);
 				
@@ -414,6 +425,21 @@ public class DWSerialDevice implements DWProtocolDevice
 		{
 			while ((res == -1) && (this.serialPort != null)) 
 			{
+				// wb 2026-09-07: a port that closed under us (USB pod power-cycled with the machine, cable pulled)
+				// kept this loop polling an empty queue forever, so the handler never reopened the device and
+				// DriveWire stayed dead until the server was restarted.  Leave instead: the handler's "device
+				// unavailable" path retries the open every DeviceFailRetryTime ms; an op in flight gets a timeout.
+				if (!this.serialPort.isOpen() || ((this.evtlistener != null) && this.evtlistener.isDisconnected()))
+				{
+					if (!portLostLogged)
+					{
+						logger.warn("serial device " + device + " is no longer open (unplugged or power-cycled?), will retry the open");
+						portLostLogged = true;
+					}
+					if (timeout)
+						throw (new DWCommTimeOutException("serial device " + device + " lost"));
+					return -1;
+				}
 				long starttime = System.currentTimeMillis();
 				Byte read = queue.poll(this.ReadByteWait, TimeUnit.MILLISECONDS);
 				this.readtime += System.currentTimeMillis() - starttime;

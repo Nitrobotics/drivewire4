@@ -121,6 +121,7 @@ public class MainWin {
     public final static int LTYPE_CLOUD_ENTRY = 22;
 
     public static boolean lowMem = false;
+    public static boolean showDebugLog = false;   // wb 2026-09-07: drivewireUI.xml ShowDebugLog
 
     public static final String default_Host = "127.0.0.1";
     public static final int default_Port = 6800;
@@ -352,7 +353,11 @@ public class MainWin {
         BasicConfigurator.configure();
         Logger.getRootLogger().setLevel(Level.INFO);
         Logger.getRootLogger().removeAllAppenders();
-        Logger.getRootLogger().addAppender(new ConsoleAppender(logLayout));
+        // wb 2026-09-07: this echoed every INFO/DEBUG line to stdout whatever the server's LogToConsole said;
+        // the UI's own console appender now carries warnings and errors only.
+        ConsoleAppender uiConsole = new ConsoleAppender(logLayout);
+        uiConsole.setThreshold(Level.WARN);
+        Logger.getRootLogger().addAppender(uiConsole);
 
         // create lowmem entry now so we don't have to create it when we're actually low on memory..
         lowMemLogItem = new LogItem();
@@ -385,19 +390,20 @@ public class MainWin {
                     });
                 }
 
-                if ((config != null) && (config.getBoolean("TermServerOnExit", false) || config.getBoolean("LocalServer", false))) {
-                    if (MainWin.dwThread.isAlive()) {
-                        stopDWServer();
-                    }
+                // wb 2026-09-07: this used to stop the server and System.exit(1), so dismissing the bug dialog took
+                // the whole DriveWire server down.  The UI thread is still alive while this handler runs, so log the
+                // trace and go straight back to pumping events.
+                logger.error("Unhandled " + e.getClass().getSimpleName() + " in UI thread: " + e.getMessage(), e);
+                if ((MainWin.shell != null) && (!MainWin.shell.isDisposed())) {
+                    runEventLoop();
                 }
-
-                System.exit(1);
             }
 
         });
 
         // get our client config
         loadConfig();
+        MainWin.showDebugLog = config.getBoolean("ShowDebugLog", false);
 
         // fire up a server
         if (config.getBoolean("LocalServer", true) && !noServer) {
@@ -590,6 +596,7 @@ public class MainWin {
 
             if (f.exists()) {
                 config = new XMLConfiguration(configfile);
+                com.groupunix.drivewireserver.DWConfigTidy.tidy(config, "UI config");   // wb 2026-09-07: no whitespace bloat
             } else {
                 logger.info("Creating new UI config file");
                 config = new XMLConfiguration();
@@ -704,12 +711,41 @@ public class MainWin {
         // initial selection?
         MainWin.sashForm.forceFocus();
 
-        while (!shell.isDisposed()) {
-            if (!display.readAndDispatch()) {
-                display.sleep();
+        runEventLoop();
+
+    }
+
+    private static long lastBugDialogTime = 0;
+
+    /**
+     * wb 2026-09-07: the SWT event loop.  An exception thrown by any UI callback used to escape
+     * readAndDispatch(), end the UI thread and trigger the uncaught-exception handler, which showed the
+     * bug dialog and then exited the JVM (embedded server included).  Now the loop logs the trace,
+     * shows the bug dialog at most once per 30 s and carries on; the server never notices.
+     */
+    static void runEventLoop() {
+        while ((shell != null) && !shell.isDisposed()) {
+            try {
+                if (!display.readAndDispatch()) {
+                    display.sleep();
+                }
+            } catch (Throwable e) {
+                if ((display == null) || display.isDisposed()) {
+                    return;
+                }
+                logger.error("Unhandled " + e.getClass().getSimpleName() + " in UI event loop: " + e.getMessage(), e);
+                long now = System.currentTimeMillis();
+                if (((now - lastBugDialogTime) > 30000) && !shell.isDisposed()) {
+                    lastBugDialogTime = now;
+                    try {
+                        BugDialog ew = new BugDialog(MainWin.shell, SWT.DIALOG_TRIM, e);
+                        ew.open();
+                    } catch (Throwable e2) {
+                        logger.error("Bug dialog failed: " + e2.getMessage());
+                    }
+                }
             }
         }
-
     }
 
     private static void doSplashTimers(final int tid, boolean both) {
@@ -1416,6 +1452,11 @@ public class MainWin {
                     mitemReload.setEnabled(false);
                     mitemController.setEnabled(false);
 
+                    // wb 2026-09-07: a slot never mentioned in an event had no DiskDef, which greyed out its whole
+                    // menu (no way to insert a disk there); create one on demand.
+                    if ((MainWin.disks != null) && (MainWin.sdisk > -1) && (MainWin.sdisk < MainWin.disks.length) && (MainWin.disks[MainWin.sdisk] == null)) {
+                        MainWin.disks[MainWin.sdisk] = new DiskDef(MainWin.sdisk);
+                    }
                     if ((MainWin.disks != null) && (MainWin.disks[MainWin.sdisk] != null)) {
                         if (!lowMem) {
                             mitemInsert.setEnabled(true);
@@ -2466,6 +2507,9 @@ public class MainWin {
         int col = MainWin.getTPIndex(key);
 
         if (col > -1) {
+            if (disk >= table.getItemCount()) {
+                ensureDiskTableRows(disk);
+            }
             table.getItem(disk).setText(col, val);
         }
     }
@@ -3117,6 +3161,7 @@ public class MainWin {
         // sync?
         display.syncExec(new Runnable() {
             public void run() {
+                ensureDiskTableRows(disk);   // wb 2026-09-07
 
                 // set file
                 int filecol = MainWin.getTPIndex("File");
@@ -3140,6 +3185,26 @@ public class MainWin {
 
     }
 
+    /**
+     * wb 2026-09-07: rows are created on demand.  The old loop stamped EVERY filler row with the number
+     * of the drive being created, so after "insert into drive 3" with drives 1 and 2 empty the table
+     * read 0,3,3,3 and the empty slots had dead menus.  Each row now carries its own index.  Display
+     * thread only.
+     */
+    static void ensureDiskTableRows(int disk, int drivecol) {
+        while (table.getItemCount() < (disk + 1)) {
+            int rowno = table.getItemCount();
+            TableItem item = new TableItem(table, SWT.NONE);
+            if (drivecol > -1) {
+                item.setText(drivecol, rowno + "");
+            }
+        }
+    }
+
+    static void ensureDiskTableRows(int disk) {
+        ensureDiskTableRows(disk, MainWin.getTPIndex("Drive"));
+    }
+
     private static void clearDiskTableEntry(final int disk) {
 
         // sync?
@@ -3155,13 +3220,7 @@ public class MainWin {
                     }
 
                     // make sure it exists
-                    while (table.getItemCount() < (disk + 1)) {
-                        TableItem item = new TableItem(table, SWT.NONE);
-
-                        if (drivecol > -1) {
-                            item.setText(drivecol, disk + "");
-                        }
-                    }
+                    ensureDiskTableRows(disk, drivecol);
 
                     // clear all txt
                     table.getItem(disk).setText(txt);
@@ -3199,9 +3258,12 @@ public class MainWin {
 
     public static void updateDiskTableItem(final int item, final String key, final Object object) {
 
-        if (disks[item].isLoaded() && (display != null) && !display.isDisposed()) {
+        if ((disks[item] != null) && disks[item].isLoaded() && (display != null) && !display.isDisposed()) {
             display.syncExec(new Runnable() {
                 public void run() {
+                    if (item >= table.getItemCount()) {
+                        ensureDiskTableRows(item);   // wb 2026-09-07
+                    }
                     int keycol = MainWin.getTPIndex(key);
 
                     if (keycol > -1) {
@@ -3310,6 +3372,12 @@ public class MainWin {
     }
 
     public static void addToServerLog(final LogItem litem) {
+        // wb 2026-09-07: with the server's LogLevel at DEBUG the Server tab received thousands of debug
+        // lines a minute.  Debug events stay out of the tab unless ShowDebugLog is true in drivewireUI.xml;
+        // they still reach the server's log file when LogToFile is on.
+        if ((litem.getLevel() != null) && litem.getLevel().equalsIgnoreCase("DEBUG") && !MainWin.showDebugLog) {
+            return;
+        }
         if (!MainWin.lowMem || litem.isImportant()) {
             display.asyncExec(
                     new Runnable() {

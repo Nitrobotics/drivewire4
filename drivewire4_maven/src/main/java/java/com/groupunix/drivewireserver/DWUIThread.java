@@ -71,7 +71,29 @@ public class DWUIThread implements Runnable {
 		{
 			// check for listen address
 			
-			srvr = new ServerSocket(this.tcpport);
+			// wb 2026-09-07: a UI restart right after the previous listener closed can still find the port
+			// busy for a moment.  That used to be fatal (UIorBust shut the whole server down); retry for a
+			// few seconds first.
+			IOException lastBindErr = null;
+			for (int attempt = 1; (srvr == null) && (attempt <= 20); attempt++)
+			{
+				try
+				{
+					ServerSocket s = new ServerSocket();
+					s.setReuseAddress(true);
+					s.bind(new java.net.InetSocketAddress(this.tcpport));
+					srvr = s;
+				}
+				catch (IOException be)
+				{
+					lastBindErr = be;
+					if (attempt == 1)
+						logger.warn("UI port " + this.tcpport + " busy (" + be.getMessage() + "), retrying...");
+					try { Thread.sleep(250); } catch (InterruptedException ie) { break; }
+				}
+			}
+			if (srvr == null)
+				throw (lastBindErr != null) ? lastBindErr : new IOException("could not bind UI port " + this.tcpport);
 			logger.info("UI listening on port " + srvr.getLocalPort());
 
 		} 

@@ -8,8 +8,8 @@
     <LoadRXTXPath category="advanced,device" type="directory"/>
     <ConfigAutosave category="advanced" type="boolean">true
 	</ConfigAutosave>
-    <LogLevel category="server,logging" list="ALL,DEBUG,INFO,WARN,ERROR,FATAL" type="list">DEBUG</LogLevel>
-    <LogToConsole category="logging" type="boolean">true</LogToConsole>
+    <LogLevel category="server,logging" list="ALL,DEBUG,INFO,WARN,ERROR,FATAL" type="list">INFO</LogLevel>
+    <LogToConsole category="logging" type="boolean">false</LogToConsole>
     <LogFormat category="advanced,logging" type="string"/>
     <LogToFile category="logging" type="boolean">false</LogToFile>
     <LogFile category="logging" type="file"/>

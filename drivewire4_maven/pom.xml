@@ -6,7 +6,7 @@
 
     <groupId>com.groupunix</groupId>
     <artifactId>drivewire4</artifactId>
-    <version>4.3.6p</version>
+    <version>4.3.6.1</version>
     <packaging>jar</packaging>
 
     <name>DriveWire 4</name>

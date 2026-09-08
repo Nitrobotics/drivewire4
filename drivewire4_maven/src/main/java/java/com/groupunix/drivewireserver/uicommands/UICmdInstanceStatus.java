@@ -79,6 +79,20 @@ public class UICmdInstanceStatus extends DWCommand {
 		txt += "proto|" + gproto.getConfig().getString("Protocol","DriveWire") + "\n";
 		
 		txt += "autostart|" + gproto.getConfig().getBoolean("AutoStart", true) + "\n";
+		// wb 2026-09-08: the configured device (live from the config, so an edited port shows at once and
+		// also while the instance is stopped); "devicename" below only exists while the device is open
+		String cdt = gproto.getConfig().getString("DeviceType", "dummy");
+		String cdev;
+		if (cdt.equalsIgnoreCase("serial"))
+			cdev = gproto.getConfig().getString("SerialDevice", "?") + " @ " + gproto.getConfig().getString("SerialRate", "?");
+		else if (cdt.equalsIgnoreCase("tcp") || cdt.equalsIgnoreCase("tcp-server"))
+			cdev = "port " + gproto.getConfig().getString("TCPServerPort", "?");
+		else if (cdt.equalsIgnoreCase("tcp-client"))
+			cdev = gproto.getConfig().getString("TCPClientHost", "?") + ":" + gproto.getConfig().getString("TCPClientPort", "?");
+		else
+			cdev = cdt;
+		txt += "configdevicetype|" + cdt + "\n";
+		txt += "configdevice|" + cdev + "\n";
 		txt += "dying|" + gproto.isDying() + "\n";
 		txt += "started|" + gproto.isStarted() + "\n";
 		txt += "ready|" + gproto.isReady() + "\n";

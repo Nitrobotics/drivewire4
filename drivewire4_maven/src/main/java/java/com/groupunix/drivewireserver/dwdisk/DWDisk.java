@@ -212,7 +212,7 @@ public abstract class DWDisk
 		// write in memory image to specified path (raw format)
 		// using most efficient method available
 		
-		FileObject altobj = VFS.getManager().resolveFile(path);
+		FileObject altobj = com.groupunix.drivewireserver.SerialOnly.files().resolveFile(path);
 		
 		if (altobj.isWriteable())
 		{

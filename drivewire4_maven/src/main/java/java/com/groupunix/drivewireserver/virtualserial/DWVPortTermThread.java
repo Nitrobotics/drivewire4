@@ -43,6 +43,7 @@ public class DWVPortTermThread implements Runnable
 	
 	public void run() 
 	{
+		if (com.groupunix.drivewireserver.SerialOnly.enabled()) { System.err.println("Network virtual serial is disabled in this COM-only build."); return; }
 		
 		Thread.currentThread().setName("termdev-" + Thread.currentThread().getId());
 		

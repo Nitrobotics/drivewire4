@@ -82,6 +82,18 @@ public class InstanceMan extends Shell
 		gridLayout.horizontalSpacing = 0;
 		setLayout(gridLayout);
 		
+        org.eclipse.swt.widgets.Button network = new org.eclipse.swt.widgets.Button(this, SWT.CHECK);
+        network.setText("Network instance");
+        network.setSelection(MainWin.isNetworkInstance());
+        network.addListener(SWT.Selection, event -> {
+            if (network.getSelection()) {
+                new com.groupunix.drivewireui.ChooseServerWin(this, SWT.DIALOG_TRIM | SWT.APPLICATION_MODAL).open();
+            } else {
+                MainWin.setNetworkInstance(false);
+                MainWin.restartServerConn();
+            }
+            network.setSelection(MainWin.isNetworkInstance());
+        });
 		expandBar = new ExpandBar(this, SWT.NONE);
 		expandBar.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 		
@@ -151,7 +163,7 @@ public class InstanceMan extends Shell
 				
 			if (!sizeset )
 			{
-				this.setSize(380, 38 + instances.size() * 116);
+				this.setSize(380, 68 + instances.size() * 116);
 				sizeset = true;
 			}
 			

@@ -23,6 +23,7 @@ public class DWTCPDevice implements DWProtocolDevice {
 	
 	public DWTCPDevice(int handlerno, int tcpport) throws IOException 
 	{
+		com.groupunix.drivewireserver.SerialOnly.rejectNetwork();
 		this.handlerno = handlerno;
 		this.tcpport = tcpport;
 		

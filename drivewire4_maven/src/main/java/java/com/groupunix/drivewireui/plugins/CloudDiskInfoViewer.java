@@ -218,7 +218,7 @@ public class CloudDiskInfoViewer extends Composite
 				{
 					try
 					{
-						URL url = new URL(info.getString("Screenshot.Path"));
+						URL url = com.groupunix.drivewireserver.SerialOnly.localURL(info.getString("Screenshot.Path"));
 						Image image = new Image(getDisplay(), url.openStream());
 						
 						lblImg.setImage(new Image(getDisplay(), image.getImageData().scaledTo( 320, 240  )) );

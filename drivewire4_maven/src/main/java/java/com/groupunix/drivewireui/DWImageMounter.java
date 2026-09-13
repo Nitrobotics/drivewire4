@@ -250,7 +250,7 @@ public class DWImageMounter extends Dialog {
      * @throws FileSystemException if there's an error accessing the zip file
      */
     public String[] findAllFileUris(String zipFilePath) throws FileSystemException {
-        FileSystemManager fsManager = VFS.getManager();
+        FileSystemManager fsManager = com.groupunix.drivewireserver.SerialOnly.files();
 
         // Normalize the path to a proper file:// URI for VFS
         String normalizedPath = normalizeToFileUri(zipFilePath);

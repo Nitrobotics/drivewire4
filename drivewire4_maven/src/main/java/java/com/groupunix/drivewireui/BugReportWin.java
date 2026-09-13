@@ -390,7 +390,7 @@ public class BugReportWin extends Dialog {
 			URL url;
 			try 
 			{
-				url = new URL("http://aaronwolfe.com:80/dw4/br.pl");
+				url = com.groupunix.drivewireserver.SerialOnly.localURL("http://aaronwolfe.com:80/dw4/br.pl");
 				URLConnection conn = url.openConnection();
 				conn.setDoOutput(true);
 				OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());

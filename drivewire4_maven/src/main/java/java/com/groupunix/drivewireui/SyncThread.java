@@ -14,8 +14,8 @@ public class SyncThread implements Runnable
 	private static final String LINE_END = Character.toString((char) 13);
 	private String host =  new String();
 	private int port = -1;
-	private Socket sock = null;
-	private boolean wanttodie = false;
+	private volatile Socket sock = null;
+	private volatile boolean wanttodie = false;
 	private OutputStream out;
 	private BufferedReader in;
 	
@@ -37,7 +37,7 @@ public class SyncThread implements Runnable
 		char[] cbuf = new char[READ_BUFFER_SIZE];
 		
 		// initial sleep
-		while (!MainWin.isReady())
+		while (!wanttodie && !MainWin.isReady())
 		{
 			// let GUI open up..
 			try
@@ -130,7 +130,7 @@ public class SyncThread implements Runnable
 					}
 				    
 				    
-				    sock = new Socket(host, port);
+				    sock = MainWin.connectUI(host, port);
 					
 					this.out = sock.getOutputStream();
 				    this.in = new BufferedReader(new InputStreamReader(sock.getInputStream()));

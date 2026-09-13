@@ -1597,7 +1597,7 @@ public class ConfigEditor extends Shell
 					
 					stupid.getCtw().setStatus("Reading config...", 30);
 					wc.clear();
-					wc.load(filepath);
+					wc.load(com.groupunix.drivewireserver.SerialOnly.localPath(filepath));
 					
 					stupid.getCtw().setStatus("Processing config...", 60);
 					

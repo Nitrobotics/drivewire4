@@ -31,6 +31,7 @@ public class UpdateWin extends Dialog {
 	 * @return the result
 	 */
 	public Object open() {
+        if (com.groupunix.drivewireserver.SerialOnly.enabled()) return null;
 		createContents();
 		shlAnUpdateIs.open();
 		shlAnUpdateIs.layout();

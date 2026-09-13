@@ -10,8 +10,10 @@ E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupu
 E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireserver\DWShutdownHandler.java
 E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireserver\DWUIClientThread.java
 E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireserver\DWUIThread.java
+E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireserver\LocalUISocket.java
 E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireserver\MCXDefs.java
 E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireserver\OS9Defs.java
+E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireserver\SerialOnly.java
 E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireserver\dwcommands\DWCmd.java
 E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireserver\dwcommands\DWCmdClient.java
 E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireserver\dwcommands\DWCmdClientRestart.java
@@ -284,6 +286,7 @@ E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupu
 E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireui\UITaskComposite.java
 E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireui\UITaskCompositeSplash.java
 E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireui\UITaskMaster.java
+E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireui\UITransport.java
 E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireui\UIUtils.java
 E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireui\Updater.java
 E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\src\main\java\java\com\groupunix\drivewireui\UpdateWin.java

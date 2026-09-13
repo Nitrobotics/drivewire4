@@ -24,6 +24,7 @@ public class Updater
 	
 	public Updater() throws ConfigurationException, Exception 
 	{
+		com.groupunix.drivewireserver.SerialOnly.rejectNetwork();
 		upconf = new XMLConfiguration();
 		
 		upconf.load(MainWin.config.getString("UpdateURL", UPDATEURL) + "/updates.xml");
@@ -75,7 +76,7 @@ public class Updater
 	 public static String getURLText(String url) throws Exception 
 	 {
 	
-		 URL website = new URL(url);
+		 URL website = com.groupunix.drivewireserver.SerialOnly.localURL(url);
 	     URLConnection connection = website.openConnection();
 	     BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
 

@@ -228,7 +228,22 @@ public class DWUIClientThread implements Runnable {
 		}
 		*/
 		
-		DWCommandResponse resp = this.commands.parse(cmd);
+		DWCommandResponse resp;
+		try
+		{
+			resp = this.commands.parse(cmd);
+		}
+		catch (RuntimeException e)
+		{
+			// wb 2026-09-08: a command that blows up (e.g. "dw disk insert" on an instance that is not started,
+			// whose disk set is still null) used to kill this thread without an answer, leaving the UI stuck on
+			// its dialog until the socket timed out.  Answer with an error instead.
+			logger.error("UI command '" + cmd + "' for instance " + this.instance + " failed: " + e, e);
+			String why = e.toString();
+			if ((this.instance > -1) && (DriveWireServer.getHandler(this.instance) != null) && !DriveWireServer.getHandler(this.instance).isStarted())
+				why = "the server instance #" + this.instance + " is not running. Start it in the Instance Manager (or enable its AutoStart) and try again";
+			resp = new DWCommandResponse(false, DWDefs.RC_SERVER_ERROR, "Server error handling '" + cmd + "': " + why);
+		}
 		
 		sendUIresponse(resp);
 

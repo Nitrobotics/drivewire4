@@ -82,7 +82,7 @@ public class PathLibraryItem extends LibraryItem
 		
 		try
 		{
-			fobj = VFS.getManager().resolveFile(this.path);
+			fobj = com.groupunix.drivewireserver.SerialOnly.files().resolveFile(this.path);
 			
 			if (fobj.isReadable())
 			{
@@ -191,7 +191,7 @@ public class PathLibraryItem extends LibraryItem
 			
 			try
 			{
-				fobj = VFS.getManager().resolveFile(this.path);
+				fobj = com.groupunix.drivewireserver.SerialOnly.files().resolveFile(this.path);
 				
 				if (fobj.isReadable())
 				{

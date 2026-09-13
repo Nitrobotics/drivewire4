@@ -31,6 +31,7 @@ public class DWTCPClientDevice implements DWProtocolDevice {
 		
 		// check for listen address
 			
+		com.groupunix.drivewireserver.SerialOnly.rejectNetwork();
 		sock = new Socket(this.tcphost, this.tcpport);
 	
 	

@@ -1087,7 +1087,7 @@ public class PathInfoViewer extends Composite
 		FileObject fobj;
 		try
 		{
-			fobj = VFS.getManager().resolveFile(pitem.getPath());
+			fobj = com.groupunix.drivewireserver.SerialOnly.files().resolveFile(pitem.getPath());
 			
 			this.lblFileName.setText(fobj.getName().getBaseName());
 			ourtab.setText(fobj.getName().getBaseName() + " ");

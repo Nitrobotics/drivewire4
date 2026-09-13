@@ -1,6 +1,7 @@
 package com.groupunix.drivewireserver.dwcommands;
 
 
+import com.groupunix.drivewireserver.DWDefs;
 import com.groupunix.drivewireserver.dwprotocolhandler.DWProtocolHandler;
 
 public class DWCmdDisk extends DWCommand {
@@ -36,6 +37,9 @@ public class DWCmdDisk extends DWCommand {
 
 	public DWCommandResponse parse(String cmdline)
 	{
+		// wb 2026-09-08: no disk set until the instance has started; refuse cleanly instead of a NullPointerException
+		if (dwProto.getDiskDrives() == null)
+			return(new DWCommandResponse(false, DWDefs.RC_INSTANCE_NOT_READY, "The server instance is not running, so it has no disk drives yet. Start it in the Instance Manager (or enable its AutoStart) before mounting disks."));
 		if (cmdline.length() == 0)
 		{
 			return(new DWCommandResponse(this.commands.getShortHelp()));

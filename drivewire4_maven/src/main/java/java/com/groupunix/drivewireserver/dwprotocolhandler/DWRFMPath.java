@@ -42,7 +42,7 @@ public class DWRFMPath
 		this.setSeekpos(0);
 		logger.debug("new path " + pathno);
 		
-		this.fsManager = VFS.getManager();
+		this.fsManager = com.groupunix.drivewireserver.SerialOnly.files();
 		this.setLocalroot(DriveWireServer.getHandler(this.handlerno).getConfig().getString("RFMRoot","/"));
 		
 	}

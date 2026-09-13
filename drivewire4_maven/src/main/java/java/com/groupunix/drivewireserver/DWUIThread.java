@@ -62,6 +62,7 @@ public class DWUIThread implements Runnable {
 	
 	public void run() 
 	{
+        if (SerialOnly.enabled()) return; // Local GUI uses memory streams, not a listener.
 		Thread.currentThread().setName("dwUIserver-" + Thread.currentThread().getId());
 		Thread.currentThread().setPriority(Thread.NORM_PRIORITY);
 		
@@ -81,7 +82,7 @@ public class DWUIThread implements Runnable {
 				{
 					ServerSocket s = new ServerSocket();
 					s.setReuseAddress(true);
-					s.bind(new java.net.InetSocketAddress(this.tcpport));
+					s.bind(new java.net.InetSocketAddress("127.0.0.1", this.tcpport));
 					srvr = s;
 				}
 				catch (IOException be)
@@ -154,6 +155,18 @@ public class DWUIThread implements Runnable {
 		logger.debug("exiting");
 	}
 
+
+    public Socket connectLocal() throws IOException {
+        if (wanttodie) throw new IOException("Local UI server is stopping");
+        LocalUISocket[] pair = LocalUISocket.pair();
+        DWUIClientThread client = new DWUIClientThread(pair[1], clientThreads);
+        Thread worker = new Thread(client, "dwUI-local");
+        worker.setDaemon(true);
+        pair[0].setServerThread(worker);
+        pair[1].setServerThread(worker);
+        worker.start();
+        return pair[0];
+    }
 
 	public void submitEvent(DWEvent evt) 
 	{

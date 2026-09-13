@@ -75,7 +75,7 @@ public class ChooseServerWin extends Dialog {
 	 */
 	private void createContents() {
 		shlChooseServer = new Shell(getParent(), getStyle());
-		shlChooseServer.setSize(362, 149);
+		shlChooseServer.setSize(390, 200);
 		shlChooseServer.setText("Choose Server...");
 		shlChooseServer.setLayout(new GridLayout(2, false));
 		
@@ -87,19 +87,38 @@ public class ChooseServerWin extends Dialog {
 		cmbHost.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true, 2, 1));
 		cmbHost.setText(MainWin.getHost() + ":" + MainWin.getPort());
 		
+        Button network = new Button(shlChooseServer, SWT.CHECK);
+        network.setText("Network instance");
+        network.setToolTipText("Unchecked: manage this application's local COM instances without network access.");
+        network.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 2, 1));
+        network.setSelection(MainWin.isNetworkInstance());
+        cmbHost.setEnabled(network.getSelection());
+        network.addSelectionListener(new SelectionAdapter() {
+            @Override public void widgetSelected(SelectionEvent e) { cmbHost.setEnabled(network.getSelection());
+                if (!network.getSelection()) { MainWin.setNetworkInstance(false); MainWin.restartServerConn(); }
+            }
+        });
+
 		Button btnOk = new Button(shlChooseServer, SWT.NONE);
 		btnOk.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, true, false, 1, 1));
 		btnOk.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) 
 			{
-				if (cmbHost.getText().contains(":"))
+				if (!network.getSelection()) {
+                    MainWin.setNetworkInstance(false);
+                    MainWin.restartServerConn();
+                    shlChooseServer.close();
+                    return;
+                }
+                if (cmbHost.getText().contains(":"))
 				{
 					String[] hp = cmbHost.getText().split(":");
 	
 					if (UIUtils.validateNum(hp[1], 1, 65535))	
 					{
-						MainWin.addServerToHistory(cmbHost.getText());
+						MainWin.setNetworkInstance(true);
+                        MainWin.addServerToHistory(cmbHost.getText());
 						MainWin.setHost(hp[0]);
 						MainWin.setPort(hp[1]);
 						MainWin.restartServerConn();

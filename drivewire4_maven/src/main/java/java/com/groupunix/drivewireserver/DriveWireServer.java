@@ -64,7 +64,7 @@ public class DriveWireServer
 	private static Vector<DWProtocol> dwProtoHandlers = new Vector<DWProtocol>();
 
 	private static Thread lazyWriterT;
-	private static DWUIThread uiObj;
+	private static volatile DWUIThread uiObj;
 	private static Thread uiT;	
 	
 	
@@ -298,6 +298,7 @@ public class DriveWireServer
 
 	public static void init(String[] args) 
 	{
+        com.groupunix.drivewireserver.SerialOnly.initialize();
 		// set thread name
 		Thread.currentThread().setName("dwserver-" + Thread.currentThread().getId());
 		
@@ -313,7 +314,7 @@ public class DriveWireServer
         try 
         {
     		// try to load/parse config
-    		serverconfig = new XMLConfiguration(configfile);
+        serverconfig = new XMLConfiguration(com.groupunix.drivewireserver.SerialOnly.localPath(configfile));
 
     		// wb 2026-09-07: drop the whitespace-only text nodes so every later save is freshly indented
     		// instead of growing by thousands of blank lines per session (see DWConfigTidy)
@@ -775,8 +776,15 @@ public class DriveWireServer
 
 
 
+    public static java.net.Socket connectLocalUI() throws java.io.IOException {
+        DWUIThread local = uiObj;
+        if (local == null) throw new java.io.IOException("Local server is not ready yet");
+        return local.connectLocal();
+    }
+
 	public static void applyUISettings() 
 	{
+        if (uiObj != null) uiObj.die();
 		if ((uiT != null) && (uiT.isAlive()))
 		{
 			uiObj.die();
@@ -791,7 +799,7 @@ public class DriveWireServer
 			}
 		}
 		
-		if (serverconfig.getBoolean("UIEnabled",false))
+		if (SerialOnly.enabled() || serverconfig.getBoolean("UIEnabled",false))
 		{
 		
 			uiObj = new DWUIThread( serverconfig.getInt("UIPort",6800));

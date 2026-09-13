@@ -315,7 +315,7 @@ public class DWDiskDrives
 	{
 		// Determine what kind of disk we have
 		
-		this.fsManager = VFS.getManager();
+		this.fsManager = com.groupunix.drivewireserver.SerialOnly.files();
 		
 		try
 		{

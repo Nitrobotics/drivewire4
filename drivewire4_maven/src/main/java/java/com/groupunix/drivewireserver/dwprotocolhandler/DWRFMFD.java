@@ -63,7 +63,7 @@ MINSEC         SET       16
 	{
 		this.pathstr = pathstr;
 		
-		this.fsManager = VFS.getManager();
+		this.fsManager = com.groupunix.drivewireserver.SerialOnly.files();
 		this.fileobj = this.fsManager.resolveFile(pathstr);
 
 		logger.info("New FD for '" + pathstr + "'");

@@ -51,7 +51,7 @@ public class UICmdServerShowLocalDisks extends DWCommand {
 			
 			FileSystemManager fsManager;
 			
-			fsManager = VFS.getManager();
+			fsManager = com.groupunix.drivewireserver.SerialOnly.files();
 			
 			FileObject dirobj = fsManager.resolveFile(path);
 			

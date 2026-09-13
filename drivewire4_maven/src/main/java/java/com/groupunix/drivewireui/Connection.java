@@ -34,7 +34,7 @@ public class Connection
 	public void Connect() throws UnknownHostException, IOException
 	{
 		MainWin.setConStatusConnect();
-		this.sock = new Socket(this.host, this.port);
+		this.sock = MainWin.connectUI(this.host, this.port);
 		this.sock.setSoTimeout(MainWin.config.getInt("TCPTimeout",MainWin.default_TCPTimeout));
 		this.in = new BufferedReader(new InputStreamReader(sock.getInputStream()));
 	}

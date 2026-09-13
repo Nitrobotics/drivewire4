@@ -46,6 +46,7 @@ public class DWVPortTCPListenerThread implements Runnable
 	
 	public void run() 
 	{
+		if (com.groupunix.drivewireserver.SerialOnly.enabled()) { System.err.println("Network virtual serial is disabled in this COM-only build."); return; }
 		
 		Thread.currentThread().setName("tcplisten-" + Thread.currentThread().getId());
 		Thread.currentThread().setPriority(Thread.NORM_PRIORITY);

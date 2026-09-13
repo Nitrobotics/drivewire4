@@ -60,7 +60,7 @@ public class DWCmdServerList extends DWCommand {
 		
 		try
 		{
-			fsManager = VFS.getManager();
+			fsManager = com.groupunix.drivewireserver.SerialOnly.files();
 		
 			path = DWUtils.convertStarToBang(path);
 			

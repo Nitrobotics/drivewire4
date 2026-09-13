@@ -32,7 +32,7 @@ public class FileUpdater implements Runnable
 		
 		try 
 		{
-			URL url = new URL(MainWin.config.getString("UpdateURL", Updater.UPDATEURL) + "/" + this.updatePage.getVersion().toString() + "/" + filename + ".gz");
+			URL url = com.groupunix.drivewireserver.SerialOnly.localURL(MainWin.config.getString("UpdateURL", Updater.UPDATEURL) + "/" + this.updatePage.getVersion().toString() + "/" + filename + ".gz");
 			
 			ReadableByteChannel rbc = Channels.newChannel(url.openStream());
 		    FileOutputStream fos = new FileOutputStream(filename +".gzt");

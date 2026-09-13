@@ -22,6 +22,7 @@ public class NineServer implements Runnable
 		{
 			// check for listen address
 			
+			com.groupunix.drivewireserver.SerialOnly.rejectNetwork();
 			srvr = new ServerSocket(port);
 			
 			while (srvr.isClosed() == false)

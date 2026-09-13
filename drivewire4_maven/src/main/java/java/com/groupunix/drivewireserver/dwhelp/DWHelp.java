@@ -75,7 +75,7 @@ public class DWHelp
 	@SuppressWarnings("unused")
 	private void loadWikiTopics(String sourceUrlString) throws IOException 
 	{
-		Source source=new Source(new URL(sourceUrlString));
+		Source source=new Source(com.groupunix.drivewireserver.SerialOnly.localURL(sourceUrlString));
 		source.getRenderer().setMaxLineLength(32);
 		String renderedText=source.getRenderer().toString();
 		

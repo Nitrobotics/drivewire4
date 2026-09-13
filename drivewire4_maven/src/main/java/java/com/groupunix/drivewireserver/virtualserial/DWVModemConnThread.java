@@ -66,6 +66,7 @@ public class DWVModemConnThread implements Runnable {
 
 	public void run() 
 	{
+		if (com.groupunix.drivewireserver.SerialOnly.enabled()) { System.err.println("Network virtual serial is disabled in this COM-only build."); return; }
 		Thread.currentThread().setName("mdmconn-" + Thread.currentThread().getId());
 	
 		int telmode = 0;

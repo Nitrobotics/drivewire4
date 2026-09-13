@@ -22,7 +22,7 @@ public class DWBrowserUtils
 		FileSystemManager fsManager;
 		try
 		{
-			fsManager = VFS.getManager();
+			fsManager = com.groupunix.drivewireserver.SerialOnly.files();
 			FileObject dir = fsManager.resolveFile(path);
 			
 			

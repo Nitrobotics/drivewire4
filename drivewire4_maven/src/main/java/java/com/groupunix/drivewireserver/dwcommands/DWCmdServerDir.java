@@ -53,7 +53,7 @@ public class DWCmdServerDir extends DWCommand {
 				
 		try
 		{
-			fsManager = VFS.getManager();
+			fsManager = com.groupunix.drivewireserver.SerialOnly.files();
 		
 			FileObject dirobj = fsManager.resolveFile(path);
 			

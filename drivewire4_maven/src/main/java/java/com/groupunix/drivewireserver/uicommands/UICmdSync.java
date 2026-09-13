@@ -67,7 +67,8 @@ public class UICmdSync extends DWCommand {
 		{
 			try 
 			{	
-				sendEvent(this.dwuiref.getEventQueue().take());
+				DWEvent event = this.dwuiref.getEventQueue().poll(250, java.util.concurrent.TimeUnit.MILLISECONDS);
+                if (event != null) sendEvent(event);
 			} 
 			catch (InterruptedException e) 
 			{

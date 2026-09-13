@@ -269,11 +269,21 @@ public class MainWin {
 
     public static Vector<OS9BufferGroup> os9BufferGroups;
     private static boolean serverLocal = false;
+    public static boolean isNetworkInstance() { return UITransport.isNetwork(); }
+    public static void setNetworkInstance(boolean value) {
+        UITransport.setNetwork(value);
+        if (!value && syncObj != null) syncObj.die();
+        config.setProperty("NetworkInstance", value);
+    }
+    public static java.net.Socket connectUI(String host, int port) throws java.io.IOException {
+        return UITransport.connect(host, port, config.getInt("TCPTimeout", default_TCPTimeout));
+    }
     public static boolean append_mode = false;
     public static int sdisk=0;
     
 
     public static void main(String[] args) {
+        com.groupunix.drivewireserver.SerialOnly.initialize();
 
 //        File jarFile = null;
 //        String libPath="drivewireserver-git/java/lib/";
@@ -506,7 +516,7 @@ public class MainWin {
             os9BufferGroups.setSize(256);
 
             // nineserver thread
-            if (MainWin.config.getInt("NineServerPort", 6309) > 0) {
+            if (!com.groupunix.drivewireserver.SerialOnly.enabled() && MainWin.config.getInt("NineServerPort", 6309) > 0) {
                 nsThread = new Thread(new NineServer(MainWin.config.getInt("NineServerPort", 6309)));
                 nsThread.setDaemon(true);
                 nsThread.start();
@@ -595,7 +605,7 @@ public class MainWin {
             File f = new File(configfile);
 
             if (f.exists()) {
-                config = new XMLConfiguration(configfile);
+                config = new XMLConfiguration(com.groupunix.drivewireserver.SerialOnly.localPath(configfile));
                 com.groupunix.drivewireserver.DWConfigTidy.tidy(config, "UI config");   // wb 2026-09-07: no whitespace bloat
             } else {
                 logger.info("Creating new UI config file");
@@ -607,6 +617,7 @@ public class MainWin {
             }
 
             config.setAutoSave(true);
+            UITransport.setNetwork(config.getBoolean("NetworkInstance", false));
 
             MainWin.host = config.getString("LastHost", default_Host);
             MainWin.port = config.getInt("LastPort", default_Port);
@@ -617,7 +628,7 @@ public class MainWin {
 
             // master file
             try {
-                master = new XMLConfiguration(config.getString("MasterPath", "master.xml"));
+                master = new XMLConfiguration(com.groupunix.drivewireserver.SerialOnly.localPath(config.getString("MasterPath", "master.xml")));
                 master.setAutoSave(false);
             } catch (ConfigurationException e1) {
                 logger.error("Could not load master config, some functions will not work correctly:  " + e1.getMessage());
@@ -2315,6 +2326,7 @@ public class MainWin {
     }
 
     public static void openURL(@SuppressWarnings("rawtypes") Class cl, String url) {
+        if (com.groupunix.drivewireserver.SerialOnly.enabled()) { MainWin.showError("COM-only build", "Web browsing is disabled.", "Use local disk images and serial COM ports."); return; }
         // this odd bit of code tries to use the org.eclipse.swt.program.Program.launch method to open a native browser with a url in it.
         // usually that is straighforward, but on some systems it can crash the whole works, so we use invoke to call it carefully and catch crashes.
         boolean failed = false;

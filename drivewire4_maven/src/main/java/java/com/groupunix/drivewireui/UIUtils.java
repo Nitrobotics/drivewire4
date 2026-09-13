@@ -1271,6 +1271,7 @@ public class UIUtils {
 
 	public static boolean isServerLocal() 
 	{
+        if (!MainWin.isNetworkInstance()) return true;
 		boolean res = false;
 		
 		for (String ip :  getNetworkInterfaceIPs())

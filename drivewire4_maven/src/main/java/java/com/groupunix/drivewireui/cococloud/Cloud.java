@@ -19,7 +19,7 @@ public class Cloud
 		try
 		{
 			Authenticator.setDefault(new CloudAuth());
-			URL url = new URL(MainWin.config.getString("CloudURL", "http://127.0.0.1:8080/CoCoCloudServer/diskLookup?sha1=") + sha1);
+			URL url = com.groupunix.drivewireserver.SerialOnly.localURL(MainWin.config.getString("CloudURL", "http://127.0.0.1:8080/CoCoCloudServer/diskLookup?sha1=") + sha1);
 			
 			
 			
@@ -63,7 +63,7 @@ public class Cloud
 		try
 		{
 			Authenticator.setDefault(new CloudAuth());
-			URL url = new URL(MainWin.config.getString("CloudURL", "http://127.0.0.1:8080/CoCoCloudServer/diskInfo?id=") + diskID);
+			URL url = com.groupunix.drivewireserver.SerialOnly.localURL(MainWin.config.getString("CloudURL", "http://127.0.0.1:8080/CoCoCloudServer/diskInfo?id=") + diskID);
 			
 			
 			res.load(url.openStream());

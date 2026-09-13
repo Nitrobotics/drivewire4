@@ -84,6 +84,11 @@ public class DWBrowser extends Composite {
     public DWBrowser(final Composite parent, String url, final CTabItem ourtab) {
         super(parent, SWT.BORDER);
         this.setOurtab(ourtab);
+        if (com.groupunix.drivewireserver.SerialOnly.enabled()) {
+            setLayout(new org.eclipse.swt.layout.FillLayout());
+            new org.eclipse.swt.widgets.Label(this, SWT.WRAP).setText("Web browsing is disabled in this COM-only build. Use local disk images.");
+            return;
+        }
         //this.append_mode=MainWin.append_mode;
 
         handcursor = new Cursor(MainWin.getDisplay(), SWT.CURSOR_HAND);
@@ -442,6 +447,7 @@ public class DWBrowser extends Composite {
     }
 
     public void openURL(String url) {
+        if (com.groupunix.drivewireserver.SerialOnly.enabled()) return;
 
         browser.setUrl(url);
 

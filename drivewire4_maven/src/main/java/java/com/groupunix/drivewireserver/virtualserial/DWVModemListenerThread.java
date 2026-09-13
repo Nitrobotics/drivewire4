@@ -45,6 +45,7 @@ import com.groupunix.drivewireserver.dwprotocolhandler.DWVSerialProtocol;
 		
 		public void run() 
 		{
+		if (com.groupunix.drivewireserver.SerialOnly.enabled()) { System.err.println("Network virtual serial is disabled in this COM-only build."); return; }
 			
 			Thread.currentThread().setName("mdmlisten-" + Thread.currentThread().getId());
 			Thread.currentThread().setPriority(Thread.NORM_PRIORITY);

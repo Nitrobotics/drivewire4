@@ -95,7 +95,7 @@ public class DWCmdDiskDosAdd extends DWCommand
 	{
 		DWDECBFileSystem decbfs = new DWDECBFileSystem(dwProto.getDiskDrives().getDisk(driveno));
 		
-		FileObject fileobj = VFS.getManager().resolveFile(path);
+		FileObject fileobj = com.groupunix.drivewireserver.SerialOnly.files().resolveFile(path);
 		
 		if (fileobj.exists() && fileobj.isReadable())
 		{

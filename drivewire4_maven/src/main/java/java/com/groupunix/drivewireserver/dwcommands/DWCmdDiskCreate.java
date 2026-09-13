@@ -88,7 +88,7 @@ public class DWCmdDiskCreate extends DWCommand {
 		{
 			
 			// create file
-			fsManager = VFS.getManager();
+			fsManager = com.groupunix.drivewireserver.SerialOnly.files();
 			fileobj = fsManager.resolveFile(filepath);
 			
 			if (fileobj.exists())

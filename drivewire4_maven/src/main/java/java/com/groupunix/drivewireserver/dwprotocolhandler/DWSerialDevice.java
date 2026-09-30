@@ -182,7 +182,7 @@ public class DWSerialDevice implements DWProtocolDevice
 		
 		// serial params
 		
-		rate = dwProto.getConfig().getInt("SerialRate", 115200);
+		rate = dwProto.getConfig().getInt("SerialRate", 230400);   // Wildbits 2026-09-18: an instance without SerialRate opens at the K2/Jr2 rate, not the CoCo 3 one
 		
 		
 		if (dwProto.getConfig().containsKey("SerialStopbits"))

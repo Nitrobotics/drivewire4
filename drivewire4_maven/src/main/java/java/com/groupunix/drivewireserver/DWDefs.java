@@ -294,7 +294,7 @@ public class DWDefs
 	public static final byte TIMER_USER			= (byte) 128; // start of user timers 
 
 	public static final int COM_MIN_DATURBO_RATE = 57600;
-	public static final int COM_MAX_DATURBO_RATE = 115200;
+	public static final int COM_MAX_DATURBO_RATE = 230400;   // Wildbits 2026-09-18: the K2/Jr2 link runs 230400, keep DATurbo reachable there
 	
 
 

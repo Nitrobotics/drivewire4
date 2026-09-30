@@ -17,6 +17,8 @@ import javax.sound.midi.Receiver;
 import javax.sound.midi.ShortMessage;
 import javax.sound.midi.Soundbank;
 import javax.sound.midi.Synthesizer;
+import javax.sound.midi.Sequencer;
+import javax.sound.midi.Transmitter;
 
 import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.log4j.Logger;
@@ -48,6 +50,9 @@ public class DWVSerialPorts {
 	// midi stuff
 	private MidiDevice midiDevice;
 	private Synthesizer midiSynth;
+	private MidiDevice midiRouteDevice;
+	private Receiver midiRouteReceiver;
+	private Transmitter midiRouteTransmitter;
 	private String soundbankfilename = null;
 	private boolean midiVoicelock = false;
 	private  HierarchicalConfiguration midiProfConf = null;
@@ -836,6 +841,10 @@ public class DWVSerialPorts {
 				this.vserialPorts[i].shutdown();
 			}
 		}
+
+		closeMIDIRoute();
+		if ((this.midiDevice != null) && this.midiDevice.isOpen())
+			this.midiDevice.close();
 	}
 
 
@@ -853,6 +862,8 @@ public class DWVSerialPorts {
 	
 	public void setMIDIDevice(MidiDevice device) throws MidiUnavailableException, IllegalArgumentException
 	{
+		closeMIDIRoute();
+
 		if (this.midiDevice != null)
 		{
 			if (this.midiDevice.isOpen())
@@ -863,7 +874,33 @@ public class DWVSerialPorts {
 		}
 		
 		device.open();
-		
+
+		try
+		{
+			this.midiSynth = (device instanceof Synthesizer) ? (Synthesizer) device : null;
+
+			// A Java sequencer accepts MIDI but produces no sound unless its transmitter
+			// is connected to a receiver.  Route it to the default software synth so a
+			// configured Real Time Sequencer cannot silently consume DriveWire MIDI.
+			if (device instanceof Sequencer)
+			{
+				this.midiSynth = MidiSystem.getSynthesizer();
+				this.midiRouteDevice = this.midiSynth;
+				this.midiRouteDevice.open();
+				this.midiRouteReceiver = this.midiRouteDevice.getReceiver();
+				this.midiRouteTransmitter = device.getTransmitter();
+				this.midiRouteTransmitter.setReceiver(this.midiRouteReceiver);
+				logger.info("midi: routed " + device.getDeviceInfo().getName() + " to "
+						+ this.midiRouteDevice.getDeviceInfo().getName());
+			}
+		}
+		catch (MidiUnavailableException e)
+		{
+			closeMIDIRoute();
+			device.close();
+			throw e;
+		}
+
 		this.midiDevice = device;
 
 		DriveWireServer.submitMIDIEvent(this.dwProto.getHandlerNo(), "device", this.midiDevice.getDeviceInfo().getName());
@@ -871,6 +908,22 @@ public class DWVSerialPorts {
 		logger.info("midi: opened " + this.midiDevice.getDeviceInfo().getName());
 
 		
+	}
+
+
+	private void closeMIDIRoute()
+	{
+		if (this.midiRouteTransmitter != null)
+			this.midiRouteTransmitter.close();
+		if (this.midiRouteReceiver != null)
+			this.midiRouteReceiver.close();
+		if ((this.midiRouteDevice != null) && this.midiRouteDevice.isOpen())
+			this.midiRouteDevice.close();
+
+		this.midiRouteTransmitter = null;
+		this.midiRouteReceiver = null;
+		this.midiRouteDevice = null;
+		this.midiSynth = null;
 	}
 
 

@@ -186,7 +186,7 @@ public class DWDefs
 	
 	public static final Boolean DISK_DEFAULT_EXPAND = true;
 	public static final Boolean DISK_DEFAULT_SYNCTO = true;
-	public static final Boolean DISK_DEFAULT_SYNCFROM = false;
+	public static final Boolean DISK_DEFAULT_SYNCFROM = true;   // wb 2026-10-05: SyncFrom and SyncTo on for every disk
 	public static final Boolean DISK_DEFAULT_WRITEPROTECT = false;
 	public static final Boolean DISK_DEFAULT_NAMEDOBJECT = false;
 	public static final int DISK_DEFAULT_OFFSET = 0;

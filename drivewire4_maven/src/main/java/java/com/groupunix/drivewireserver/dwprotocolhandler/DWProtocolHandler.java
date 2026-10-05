@@ -60,7 +60,7 @@ public class DWProtocolHandler implements Runnable, DWVSerialProtocol
 	
 	// serial port instance
 	
-	private DWProtocolDevice protodev = null;
+	private volatile DWProtocolDevice protodev = null;
 	
 	// printer
 	private DWVPrinter vprinter;
@@ -68,7 +68,11 @@ public class DWProtocolHandler implements Runnable, DWVSerialProtocol
 	// disk drives
 	private DWDiskDrives diskDrives;
 	
-	private boolean wanttodie = false;
+	private volatile boolean wanttodie = false;
+	private final Object deviceRetryWait = new Object();
+	// wb 2026-10-05: open-failure log throttle - the same message is logged again only after 10 minutes
+	private String lastSetupFailure = null;
+	private long lastSetupFailureLogged = 0;
 
 	// RFM handler
 	private DWRFMHandler rfmhandler;
@@ -88,7 +92,7 @@ public class DWProtocolHandler implements Runnable, DWVSerialProtocol
 	private boolean ready = false;
 	private boolean started = false;
 
-	private boolean resetPending = false;
+	private volatile boolean resetPending = false;
 	
 	
 
@@ -129,9 +133,8 @@ public class DWProtocolHandler implements Runnable, DWVSerialProtocol
 		logger.debug("handler #" + handlerno + ": shutdown requested");
 		
 		this.wanttodie = true;
-		
-		if (this.protodev != null)
-			this.protodev.shutdown();
+		synchronized (deviceRetryWait) { deviceRetryWait.notifyAll(); }
+		stopProtocolDevice();
 	}
 	
 	
@@ -439,6 +442,12 @@ public class DWProtocolHandler implements Runnable, DWVSerialProtocol
 						// wb 2026-09-07: garbage data or a lost port must not kill the handler thread; log and carry on
 						logger.error("Unexpected " + e.getClass().getSimpleName() + " in " + DWUtils.prettyOP(lastOpcode) + ": " + e.getMessage(), e);
 					}
+					catch (LinkageError | AssertionError e)
+					{
+						// wb 2026-10-05: a native/serial library failure on a vanished device is not fatal either
+						logger.error("Unexpected " + e.getClass().getSimpleName() + " in " + DWUtils.prettyOP(lastOpcode) + ": " + e.getMessage(), e);
+						closeProtocolDevice();
+					}
 		
 					this.inOp = false;
 					
@@ -455,32 +464,21 @@ public class DWProtocolHandler implements Runnable, DWVSerialProtocol
 					if (!this.wanttodie)
 					{
 						
-						if (this.resetPending)
+						// Stop native events now, before the retry delay. A dead listener
+						// must not spend that delay repeatedly reading a failed handle.
+						// wb 2026-10-05: nothing in the close/wait/reopen cycle may end the handler thread.
+						try
 						{
-							logger.debug("device is resetting...");
-							
-							// kill device
-							if (protodev != null)
-								this.protodev.shutdown();
-							
+							closeProtocolDevice();
 							this.resetPending = false;
+							if (waitForDeviceRetry())
+								setupProtocolDevice();
 						}
-						else if (!config.getString("DeviceType","").equals("dummy"))
-							logger.debug("device unavailable, will retry in " + config.getInt("DeviceFailRetryTime",6000) + "ms");
-					
-						// take a break, reset, hope things work themselves out
-						try 
+						catch (RuntimeException | LinkageError | AssertionError e)
 						{
-							
-							Thread.sleep(config.getInt("DeviceFailRetryTime",6000));
-							
-							setupProtocolDevice();
-							
-						} 
-						catch (InterruptedException e) 
-						{	
-							logger.error("Interrupted during failed port delay.. giving up on this crazy situation");
-							wanttodie = true;
+							logger.error("handler #" + handlerno + ": device retry failed, will retry: " + e, e);
+							protodev = null;
+							waitForDeviceRetry();
 						}
 					}
 				}
@@ -524,10 +522,7 @@ public class DWProtocolHandler implements Runnable, DWVSerialProtocol
 		}
 		finally
 		{
-			if (protodev != null)
-			{
-				protodev.shutdown();
-			}
+			closeProtocolDevice();
 		}
 		
 		logger.debug("handler #"+ handlerno+ ": exiting");
@@ -1614,23 +1609,82 @@ public class DWProtocolHandler implements Runnable, DWVSerialProtocol
 			// flag that we want a reset
 			this.resetPending = true;
 			
-			if (this.protodev != null)
-			{
-				this.protodev.close();
-			}
+			DWProtocolDevice device = this.protodev;
+			if (device != null) device.close();
 			
 		}
 	}
 	
 	
-	private void setupProtocolDevice()
+	private synchronized void stopProtocolDevice()
 	{
-		
-		if ((protodev != null) && (!resetPending))
-			protodev.shutdown();
-		
-		
-		
+		if (protodev != null) protodev.shutdown();
+	}
+
+	private synchronized void closeProtocolDevice()
+	{
+		DWProtocolDevice old = protodev;
+		protodev = null;
+		if (old != null)
+		{
+			try { old.shutdown(); }
+			catch (RuntimeException e) { logger.warn("device cleanup failed: " + e); }
+		}
+	}
+
+	// wb 2026-10-05: a device that stays unplugged retries every few seconds; log a failure the first time, when it
+	// changes, and then once per 10 minutes, so dw4.log no longer grows by a line per retry.
+	private void setupFailed(String msg)
+	{
+		long now = System.currentTimeMillis();
+		if (!msg.equals(lastSetupFailure) || now - lastSetupFailureLogged >= 600000L)
+		{
+			logger.error("handler #" + handlerno + ": " + msg + " - retrying (repeats are logged every 10 minutes)");
+			lastSetupFailureLogged = now;
+		}
+		else
+		{
+			logger.debug("handler #" + handlerno + ": " + msg);
+		}
+		lastSetupFailure = msg;
+	}
+
+	private void setupSucceeded()
+	{
+		if (lastSetupFailure != null)
+			logger.info("handler #" + handlerno + ": serial device '" + config.getString("SerialDevice") + "' is back");
+		lastSetupFailure = null;
+		lastSetupFailureLogged = 0;
+	}
+
+	private boolean waitForDeviceRetry()
+	{
+		int delay = 6000;
+		try { delay = Math.max(1000, Math.min(60000, config.getInt("DeviceFailRetryTime", 6000))); }
+		catch (RuntimeException e) { /* Invalid settings must not create a retry spin. */ }
+		long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(delay);
+		synchronized (deviceRetryWait)
+		{
+			while (!wanttodie)
+			{
+				long remaining = deadline - System.nanoTime();
+				if (remaining <= 0) return true;
+				try { java.util.concurrent.TimeUnit.NANOSECONDS.timedWait(deviceRetryWait, remaining); }
+				catch (InterruptedException e)
+				{
+					Thread.currentThread().interrupt();
+					wanttodie = true;
+				}
+			}
+		}
+		return false;
+	}
+
+	private synchronized void setupProtocolDevice()
+	{
+		closeProtocolDevice();
+		if (wanttodie) return;
+
 		if (config.getString("DeviceType","dummy").equalsIgnoreCase("dummy") )
 		{
 			this.resetPending = false;
@@ -1645,31 +1699,36 @@ public class DWProtocolHandler implements Runnable, DWVSerialProtocol
 				{
 					protodev = new DWSerialDevice(this);
 					this.resetPending = false;
+					setupSucceeded();
 				}
 				catch (DWPortNotValidException e1)
 				{
 					//wanttodie = true; lets keep on living and see how that goes
-					logger.error("handler #"+handlerno+": Serial device '" + config.getString("SerialDevice") + "' not found");
+					setupFailed("Serial device '" + config.getString("SerialDevice") + "' not present (unplugged or powered off?)");
 				} 
 				catch (DWPortInUseException e2)
 				{
 					//wanttodie = true;
-					logger.error("handler #"+handlerno+": Serial device '" + config.getString("SerialDevice") + "' in use");
+					setupFailed("Serial device '" + config.getString("SerialDevice") + "' in use or not ready");
 				}
 				catch (DWUnsupportedCommOperationException e3)
 				{
 					//wanttodie = true;
-					logger.error("handler #"+handlerno+": Unsupported comm operation while opening serial port '"+config.getString("SerialDevice")+"'");
+					setupFailed("Unsupported comm operation while opening serial port '"+config.getString("SerialDevice")+"'");
 				} 
 				catch (IOException e)
 				{
 					//wanttodie = true;
-					logger.error("handler #"+handlerno+": IO exception while opening serial port '"+config.getString("SerialDevice")+"'");
+					setupFailed("IO exception while opening serial port '"+config.getString("SerialDevice")+"'");
 				} 
 				catch (TooManyListenersException e)
 				{
 					//wanttodie = true;
-					logger.error("handler #"+handlerno+": Too many listeneres while opening serial port '"+config.getString("SerialDevice")+"'");
+					setupFailed("Too many listeners while opening serial port '"+config.getString("SerialDevice")+"'");
+				}
+				catch (RuntimeException e)
+				{
+					setupFailed("serial setup failed: " + e);
 				}
 			}	
 			else

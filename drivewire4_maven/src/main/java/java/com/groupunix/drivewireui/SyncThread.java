@@ -55,7 +55,7 @@ public class SyncThread implements Runnable
 		{
 			
 			// change/establish connection
-			if (!wanttodie && !(MainWin.getHost() == null) && !this.host.equals(MainWin.getHost()) || !(this.port == MainWin.getPort()) || (this.sock == null))		
+			if (!wanttodie && MainWin.getHost() != null && (!this.host.equals(MainWin.getHost()) || this.port != MainWin.getPort() || this.sock == null))
 			{
 				
 				
@@ -64,7 +64,7 @@ public class SyncThread implements Runnable
 					MainWin.addToServerLog(new LogItem("Sync: Disconnecting from server.."));
 					try 
 					{
-						sock.close();
+						closeSocket();
 					} 
 					catch (IOException e) 
 					{
@@ -130,10 +130,15 @@ public class SyncThread implements Runnable
 					}
 				    
 				    
-				    sock = MainWin.connectUI(host, port);
+				    Socket connection = MainWin.connectUI(host, port);
+				    synchronized (this)
+				    {
+					if (wanttodie) { connection.close(); break; }
+					sock = connection;
+				    }
 					
-					this.out = sock.getOutputStream();
-				    this.in = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+					this.out = connection.getOutputStream();
+				    this.in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
 				    
 				    MainWin.setConStatusConnect();
 				    
@@ -159,7 +164,7 @@ public class SyncThread implements Runnable
 					// TODO MainWin.addToDisplay("Sync: " + e.getMessage());
 					
 					
-					sock = null;
+					try { closeSocket(); } catch (IOException ignored) { }
 					try {
 						Thread.sleep(5000);
 					} catch (InterruptedException e1) 
@@ -171,7 +176,8 @@ public class SyncThread implements Runnable
 			}
 			
 			
-			if (!wanttodie && (sock != null) && !sock.isInputShutdown())
+			Socket current = sock;
+			if (!wanttodie && current != null && !current.isInputShutdown())
 			{
 				MainWin.setConStatusConnect();
 
@@ -183,7 +189,7 @@ public class SyncThread implements Runnable
 					{
 						try 
 						{
-							sock.close();
+							closeSocket();
 						} 
 						catch (IOException e1) 
 						{
@@ -208,7 +214,7 @@ public class SyncThread implements Runnable
 					if (sock != null)
 					try 
 					{
-						sock.close();
+						closeSocket();
 					} 
 					catch (IOException e1) 
 					{
@@ -469,6 +475,17 @@ public class SyncThread implements Runnable
 		
 	}
 
+	private void closeSocket() throws IOException
+	{
+		final Socket old;
+		synchronized (this)
+		{
+			old = sock;
+			sock = null;
+		}
+		if (old != null) old.close();
+	}
+
 	public void die()
 	{
 		this.wanttodie = true;
@@ -477,7 +494,7 @@ public class SyncThread implements Runnable
 		{
 			try 
 			{
-				this.sock.close();
+				closeSocket();
 			} 
 			catch (IOException e) 
 			{

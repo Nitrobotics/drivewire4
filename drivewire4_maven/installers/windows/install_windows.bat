@@ -2,6 +2,9 @@
 setlocal EnableDelayedExpansion
 
 :: DriveWire 4 Windows installer (no admin required)
+:: An existing installation is removed ONLY through the uninstaller, which asks first and never deletes a .xml
+:: file. The installer then never overwrites an existing .xml file: config.xml, drivewireUI.xml and the rest keep
+:: your settings; only .xml files the folder does not have yet are copied in.
 set "APP_NAME=DriveWire4"
 set "TARGET_DIR=%USERPROFILE%\%APP_NAME%"
 set "START_MENU_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\%APP_NAME%"
@@ -19,39 +22,53 @@ echo   Source: %SOURCE_DIR%
 echo   Target: %TARGET_DIR%
 echo.
 
-:: Verify source has expected distribution files
-if not exist "%SOURCE_DIR%\config.xml" (
-    echo ERROR: config.xml not found in %SOURCE_DIR%
+:: Never install a folder onto itself (running the copy inside the installation used to delete the source)
+if /I "%SOURCE_DIR%"=="%TARGET_DIR%" (
+    echo ERROR: this installer is inside the installation folder itself.
+    echo Run install_windows.bat from the extracted distribution instead. Nothing was changed.
     pause
     exit /b 1
 )
 
-:: Remove existing installation
-if exist "%TARGET_DIR%" (
-    echo Removing old installation...
-    rd /s /q "%TARGET_DIR%" 2>nul
-    ping -n 2 127.0.0.1 >nul
+:: Verify source has expected distribution files
+if not exist "%SOURCE_DIR%\drivewire4.jar" (
+    echo ERROR: drivewire4.jar not found in %SOURCE_DIR%
+    pause
+    exit /b 1
+)
+if not exist "%SOURCE_DIR%\uninstall_windows.bat" (
+    echo ERROR: uninstall_windows.bat not found in %SOURCE_DIR%
+    pause
+    exit /b 1
 )
 
-:: Create and copy
+:: Existing installation: the uninstaller asks first and keeps every .xml file. It runs from a temporary copy so
+:: it can remove the installed uninstall.bat as well.
+if exist "%TARGET_DIR%\" (
+    echo An installation already exists in %TARGET_DIR%.
+    set "UNINST=%TEMP%\dw4_uninstall_%RANDOM%.bat"
+    copy /y "%SOURCE_DIR%\uninstall_windows.bat" "!UNINST!" >nul
+    call "!UNINST!" "%TARGET_DIR%"
+    set "RC=!ERRORLEVEL!"
+    del /q "!UNINST!" 2>nul
+    if "!RC!"=="1" (
+        echo Installation cancelled - the existing installation was left as it is.
+        pause
+        exit /b 1
+    )
+)
+
+:: Create and copy: everything except .xml, then only the .xml files the folder does not have yet
 echo Copying files to %TARGET_DIR%...
 mkdir "%TARGET_DIR%" 2>nul
-robocopy "%SOURCE_DIR%" "%TARGET_DIR%" /E /NFL /NDL /NJH /NJS /NC /NS /NP
+robocopy "%SOURCE_DIR%" "%TARGET_DIR%" /E /XF *.xml /NFL /NDL /NJH /NJS /NC /NS /NP
+robocopy "%SOURCE_DIR%" "%TARGET_DIR%" *.xml /E /XC /XN /XO /NFL /NDL /NJH /NJS /NC /NS /NP
 echo Copy complete.
 
-:: Create uninstaller in the install directory
-echo Creating uninstaller...
-(
-echo @echo off
-echo set /p "YN=Uninstall %APP_NAME%? [Y/N]: "
-echo if /I "%%YN%%" NEQ "Y" exit /b
-echo rd /s /q "%TARGET_DIR%"
-echo rd /s /q "%START_MENU_DIR%"
-echo echo Uninstalled.
-echo pause
-) > "%TARGET_DIR%\uninstall.bat"
+:: The installed uninstaller is the same one: asks first, keeps the .xml files
+copy /y "%SOURCE_DIR%\uninstall_windows.bat" "%TARGET_DIR%\uninstall.bat" >nul
 
-:: Modify drivewireUI.xml
+:: Modify drivewireUI.xml (adds the HDB-DOS link only when it is missing; nothing else in the file changes)
 set "XML_FILE=%TARGET_DIR%\drivewireUI.xml"
 if exist "%XML_FILE%" (
     echo Configuring XML...

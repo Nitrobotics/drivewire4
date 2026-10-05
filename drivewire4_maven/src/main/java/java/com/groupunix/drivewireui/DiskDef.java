@@ -302,12 +302,12 @@ public class DiskDef implements Cloneable
 
 	public boolean isSyncTo()
 	{
-		return(this.params.getBoolean("syncto", false));
+		return(this.params.getBoolean("syncto", true));
 	}
 	
 	public boolean isSyncFrom()
 	{
-		return(this.params.getBoolean("syncfrom", false));
+		return(this.params.getBoolean("syncfrom", true));
 	}
 
 	public boolean hasParam(String key)

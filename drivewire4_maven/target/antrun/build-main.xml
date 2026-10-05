@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="maven-antrun-" default="main">
+  <target name="main">
+    <delete failonerror="false" verbose="true">
+      <fileset includes="macosx-*.jar" dir="E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\target/lib" />
+      <fileset includes="*carbon*.jar" dir="E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\target/lib" />
+      <fileset includes="x86-*.jar" dir="E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\target/lib" />
+      <fileset includes="x86_64-*.jar" dir="E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\target/lib" />
+      <fileset includes="aarch64-*.jar" dir="E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\target/lib" />
+      <fileset includes="win32-*.jar" dir="E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\target/lib" />
+      <fileset includes="linux-*.jar" dir="E:\cygwin64\home\taylo\drivewire4\drivewire4_maven\target/lib" />
+    </delete>
+  </target>
+</project>

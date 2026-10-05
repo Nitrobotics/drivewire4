@@ -21,7 +21,7 @@ public class DWSerialDevice implements DWProtocolDevice
 {
 	private static final Logger logger = Logger.getLogger("DWServer.DWSerialDevice");
 	
-	private SerialPort serialPort = null;
+	private volatile SerialPort serialPort = null;
 
 	private boolean bytelog = false;
 	private String device;
@@ -33,10 +33,10 @@ public class DWSerialDevice implements DWProtocolDevice
 	private byte[] prefix;
 	private long readtime;
 
-	private ArrayBlockingQueue<Byte> queue;
+	private volatile ArrayBlockingQueue<Byte> queue;
 
-	private DWSerialReader evtlistener;
-	private boolean portLostLogged = false;
+	private volatile DWSerialReader evtlistener;
+	private volatile boolean portLost = false;
 
 	private boolean ProtocolFlipOutputBits;
 
@@ -62,38 +62,43 @@ public class DWSerialDevice implements DWProtocolDevice
 	
 	public boolean connected()
 	{
-		if (this.serialPort != null && this.serialPort.isOpen())
-		{
-			return(true);
-		}
-		else
-		{
-			return(false);
-		}
+		SerialPort port = serialPort;
+		DWSerialReader reader = evtlistener;
+		return !portLost && port != null && port.isOpen()
+				&& reader != null && !reader.isDisconnected();
 	}
 
-	
-
-	public void close()
+	// Only the handler/control thread closes native handles, never the callback.
+	public synchronized void close()
 	{
-		
-		if (this.serialPort != null)
+		portLost = true;
+		SerialPort port = serialPort;
+		serialPort = null;
+		DWSerialReader reader = evtlistener;
+		if (reader != null)
+			reader.shutdown();
+		if (port != null)
 		{
-			logger.debug("closing serial device " +  device + " in handler #" + dwProto.getHandlerNo());
-			
-			if (this.evtlistener != null)
+			try { port.removeDataListener(); }
+			catch (RuntimeException e) { logger.warn("removing serial listener: " + e.getMessage()); }
+			finally
 			{
-				this.evtlistener.shutdown();
-				serialPort.removeDataListener();
+				try { port.closePort(); }
+				catch (RuntimeException e) { logger.warn("closing serial port: " + e.getMessage()); }
 			}
-			
-			serialPort.closePort();
-			serialPort = null;
-			
 		}
+		if (queue != null)
+			queue.clear();
 	}
 
-	
+	private void portFailed(String reason)
+	{
+		portLost = true;
+		DWSerialReader reader = evtlistener;
+		if (reader != null)
+			reader.disconnect("serial device " + device + " lost: " + reason);
+	}
+
 	public void shutdown()
 	{
 		this.close();
@@ -101,16 +106,20 @@ public class DWSerialDevice implements DWProtocolDevice
 	}
 
 	
-	public void reconnect() throws DWUnsupportedCommOperationException, TooManyListenersException, IOException
+	public synchronized void reconnect() throws DWUnsupportedCommOperationException, TooManyListenersException, IOException
 	{
 		if (this.serialPort != null)
 		{
-			setSerialParams(serialPort);               
- 			
 			if (this.evtlistener != null)
 			{
+				this.evtlistener.shutdown();
 				this.serialPort.removeDataListener();
 			}
+			setSerialParams(serialPort);
+			if (!serialPort.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 0, 0))
+				throw new IOException("Could not set nonblocking serial I/O");
+			serialPort.flushIOBuffers();
+			portLost = false;
 			
 			this.queue = new ArrayBlockingQueue<Byte>(512);
 			
@@ -121,6 +130,29 @@ public class DWSerialDevice implements DWProtocolDevice
 		}
 	}
 	
+	// True when the OS lists the port, or when the list cannot be read (never block an open on a failed scan).
+	private static boolean isPortPresent(String portName)
+	{
+		try
+		{
+			SerialPort[] ports = SerialPort.getCommPorts();
+			if (ports == null || ports.length == 0)
+				return true;
+			String want = portName.replace("\\\\.\\", "");
+			for (SerialPort p : ports)
+			{
+				String name = p.getSystemPortName();
+				if (name != null && (name.equalsIgnoreCase(want) || name.equalsIgnoreCase(portName)))
+					return true;
+			}
+			return false;
+		}
+		catch (RuntimeException | LinkageError e)
+		{
+			return true;
+		}
+	}
+
 	private void connect(String portName) throws DWPortNotValidException, DWPortInUseException, DWUnsupportedCommOperationException, TooManyListenersException, IOException
 	{
 		logger.debug("attempting to open device '" + portName + "'");
@@ -150,6 +182,13 @@ public class DWSerialDevice implements DWProtocolDevice
 			throw new DWPortNotValidException("Port not found: " + portName);
 		}
 		
+		// wb 2026-10-05: an unplugged or powered-off USB serial device is absent from the system's port list;
+		// say so instead of "in use", and do not touch the native open for a port that is not there.
+		if (!isPortPresent(portName))
+		{
+			throw new DWPortNotValidException("Port not present: " + portName);
+		}
+
 		// Try to open the port
 		if (!port.openPort())
 		{
@@ -158,7 +197,22 @@ public class DWSerialDevice implements DWProtocolDevice
 		}
 		
 		serialPort = port;
-		reconnect();
+		try
+		{
+			reconnect();
+		}
+		catch (DWUnsupportedCommOperationException | TooManyListenersException | IOException e)
+		{
+			// A constructor that throws is never assigned to the handler. Release
+			// its handle here or every subsequent open reports "in use".
+			close();
+			throw e;
+		}
+		catch (RuntimeException e)
+		{
+			close();
+			throw new IOException("Serial setup failed for " + portName, e);
+		}
 		
 		logger.info("opened serial device " + portName);
 	}
@@ -175,6 +229,7 @@ public class DWSerialDevice implements DWProtocolDevice
 		
 		this.WriteByteDelay = this.dwProto.getConfig().getLong("WriteByteDelay", 0);
 		this.ReadByteWait = this.dwProto.getConfig().getLong("ReadByteWait", 200);
+		if (this.ReadByteWait <= 0) this.ReadByteWait = 200;
 		this.ProtocolFlipOutputBits = this.dwProto.getConfig().getBoolean("ProtocolFlipOutputBits", false);
 		this.ProtocolResponsePrefix = dwProto.getConfig().getBoolean("ProtocolResponsePrefix", false);
 		this.xorinput = dwProto.getConfig().getBoolean("ProtocolXORInputBits", false);
@@ -261,19 +316,20 @@ public class DWSerialDevice implements DWProtocolDevice
 	
 	public int getRate()
 	{
-		if (this.serialPort != null)
-			return(this.serialPort.getBaudRate());
+		SerialPort port = serialPort;
+		if (port != null)
+			return(port.getBaudRate());
 		return -1;
 	}
 	
 
 	
 	
-	public void comWrite(byte[] data, int len, boolean pfix)
+	public synchronized void comWrite(byte[] data, int len, boolean pfix)
 	{	
 		try 
 		{
-			if ((this.serialPort == null) || !this.serialPort.isOpen())
+			if (!connected())
 			{
 				logger.debug("write of " + len + " byte(s) dropped: serial device not open");
 				return;
@@ -323,22 +379,25 @@ public class DWSerialDevice implements DWProtocolDevice
 		} 
 		catch (IOException e) 
 		{
-			// problem with comm port, bail out
-			logger.error(e.getMessage());
+			portFailed(e.getMessage());
 			
+		}
+		catch (RuntimeException e)
+		{
+			portFailed(e.toString());
 		}
 	}	
 	
 	
 
 
-	public void comWrite1(int data, boolean pfix)
+	public synchronized void comWrite1(int data, boolean pfix)
 	{
 		
 		
 		try 
 		{
-			if ((this.serialPort == null) || !this.serialPort.isOpen())
+			if (!connected())
 			{
 				logger.debug("write dropped: serial device not open");
 				return;
@@ -377,9 +436,12 @@ public class DWSerialDevice implements DWProtocolDevice
 		} 
 		catch (IOException e) 
 		{
-			// problem with comm port, bail out
-			logger.error(e.getMessage());
+			portFailed(e.getMessage());
 			
+		}
+		catch (RuntimeException e)
+		{
+			portFailed(e.toString());
 		}
 	}
 	
@@ -416,63 +478,53 @@ public class DWSerialDevice implements DWProtocolDevice
 	}
 	
 	
-	public int comRead1(boolean timeout, boolean blog) throws IOException, DWCommTimeOutException 
+	public int comRead1(boolean timeout, boolean blog) throws IOException, DWCommTimeOutException
 	{
-		
-		int res = -1;
-		
+		long start = System.nanoTime();
+		long deadline = start + TimeUnit.MILLISECONDS.toNanos(ReadByteWait);
 		try
 		{
-			while ((res == -1) && (this.serialPort != null)) 
+			for (;;)
 			{
-				// wb 2026-09-07: a port that closed under us (USB pod power-cycled with the machine, cable pulled)
-				// kept this loop polling an empty queue forever, so the handler never reopened the device and
-				// DriveWire stayed dead until the server was restarted.  Leave instead: the handler's "device
-				// unavailable" path retries the open every DeviceFailRetryTime ms; an op in flight gets a timeout.
-				if (!this.serialPort.isOpen() || ((this.evtlistener != null) && this.evtlistener.isDisconnected()))
+				if (!connected())
 				{
-					if (!portLostLogged)
-					{
-						logger.warn("serial device " + device + " is no longer open (unplugged or power-cycled?), will retry the open");
-						portLostLogged = true;
-					}
-					if (timeout)
-						throw (new DWCommTimeOutException("serial device " + device + " lost"));
+					if (timeout) throw new IOException("serial device " + device + " lost");
 					return -1;
 				}
-				long starttime = System.currentTimeMillis();
-				Byte read = queue.poll(this.ReadByteWait, TimeUnit.MILLISECONDS);
-				this.readtime += System.currentTimeMillis() - starttime;
-				
-				if (read != null)
-					res = 0xFF & read;
-				else if (timeout)
+				long wait = TimeUnit.MILLISECONDS.toNanos(100);
+				if (timeout)
 				{
-					throw (new DWCommTimeOutException("No data in " + this.ReadByteWait + " ms"));
+					long remaining = deadline - System.nanoTime();
+					if (remaining <= 0)
+						throw new DWCommTimeOutException("No data in " + ReadByteWait + " ms");
+					wait = Math.min(wait, remaining);
 				}
-				
+				Byte read = queue.poll(wait, TimeUnit.NANOSECONDS);
+				if (read != null && connected())
+				{
+					int res = read & 0xFF;
+					if (xorinput) res ^= 0xFF;
+					if (blog && bytelog) logger.debug("READ1: " + res);
+					return res;
+				}
 			}
-		} 
+		}
 		catch (InterruptedException e)
 		{
-			logger.debug("interrupted in serial read");
+			Thread.currentThread().interrupt();
+			if (timeout) throw new IOException("Interrupted reading " + device, e);
+			return -1;
 		}
-		
-		if (this.xorinput )
-			res = res ^ 0xFF;
-		
-		if (blog && this.bytelog)
-			logger.debug("READ1: " + res);
-		
-		return res;
+		finally { readtime += TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start); }
 	}
 
 
 	@Override
 	public String getDeviceName() 
 	{
-		if (this.serialPort != null)
-			return(this.serialPort.getSystemPortName());
+		SerialPort port = serialPort;
+		if (port != null)
+			return(port.getSystemPortName());
 		
 		return null;
 	}
@@ -485,7 +537,7 @@ public class DWSerialDevice implements DWProtocolDevice
 	}
 
 
-	public void enableDATurbo() throws DWUnsupportedCommOperationException
+	public synchronized void enableDATurbo() throws DWUnsupportedCommOperationException
 	{
 		// valid port, not already turbo
 		if ((this.serialPort != null) && !this.DATurboMode)
@@ -532,34 +584,16 @@ public class DWSerialDevice implements DWProtocolDevice
 
 
 	@Override
-	public InputStream getInputStream() 
+	public InputStream getInputStream()
 	{
-		 return new InputStream() 
-		 {
-             private boolean endReached = false;
-
-         	@Override
-             public int read() throws IOException 
-             {
-                 try {
-                     if (endReached)
-                         return -1;
-                         
-                     Byte value = queue.take();
-                     if (value == null) 
-                     {
-                    	
-                         throw new IOException(
-                                 "Timeout while reading from the queue-based input stream");
-                     }
-
-                     endReached = (value.intValue() == -1);
-                     return value;
-                 } catch (InterruptedException ie) {
-                     throw new IOException(
-                             "Interruption occurred while writing in the queue");
-                 }
-             }
-         };
+		return new InputStream()
+		{
+			@Override
+			public int read() throws IOException
+			{
+				try { return comRead1(false, false); }
+				catch (DWCommTimeOutException e) { throw new IOException(e); }
+			}
+		};
 	}
 }
